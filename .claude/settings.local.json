@@ -5,7 +5,9 @@
       "mcp__2a853eb7-aa67-434b-a10a-c045ff1e0e4d__get_publishable_keys",
       "Bash(npm install *)",
       "Bash(npm run *)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Read(//Users/mheepooh/Desktop/Hoya/money-tracker/**)",
+      "Read(//Users/mheepooh/Desktop/Hoya/money-tracker/.claude/**)"
     ]
   }
 }
