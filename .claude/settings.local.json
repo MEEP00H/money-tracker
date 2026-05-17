@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__2a853eb7-aa67-434b-a10a-c045ff1e0e4d__list_projects",
+      "mcp__2a853eb7-aa67-434b-a10a-c045ff1e0e4d__get_publishable_keys",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

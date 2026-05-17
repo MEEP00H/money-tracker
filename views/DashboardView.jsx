@@ -6,7 +6,7 @@ import { SLabel, PxCard, PxBtn, PxInput, PixelBar } from "../components/ui";
 import BarTooltip from "../components/BarTooltip";
 import TxnRow from "../components/TxnRow";
 
-export default function DashboardView({ selectedMonth, setSelMonth, wallets, txns, activeWallet, setActiveWlt, budgets, setBudgets, setView, setDeleteId, showToast, catColors }) {
+export default function DashboardView({ selectedMonth, setSelMonth, wallets, txns, activeWallet, setActiveWlt, budgets, saveBudget, setView, setDeleteId, showToast, catColors }) {
   const [editingBudget, setEditBudget] = useState(false);
   const [budgetInput,   setBudgetInput] = useState("");
 
@@ -36,10 +36,8 @@ export default function DashboardView({ selectedMonth, setSelMonth, wallets, txn
   const budgetPct   = monthBudget>0?Math.min(100,Math.round((monthTotals.expense/monthBudget)*100)):0;
   const budgetLeft  = monthBudget-monthTotals.expense;
 
-  const saveBudget = ()=>{
-    const v=+budgetInput;
-    if(v>0){setBudgets(b=>({...b,[selectedMonth]:v}));showToast(">> งบประมาณบันทึกแล้ว");}
-    else{setBudgets(b=>{const c={...b};delete c[selectedMonth];return c;});}
+  const handleSaveBudget = ()=>{
+    saveBudget(selectedMonth, +budgetInput);
     setEditBudget(false);
   };
 
@@ -131,7 +129,7 @@ export default function DashboardView({ selectedMonth, setSelMonth, wallets, txn
           <div style={{display:"flex",gap:7,marginBottom:10}}>
             <PxInput type="number" placeholder="งบรายจ่าย..." value={budgetInput} onChange={e=>setBudgetInput(e.target.value)} autoFocus
               style={{flex:1,color:P.accent,fontFamily:"'VT323',monospace",fontSize:20}}/>
-            <PxBtn onClick={saveBudget} color={P.accent} bg={P.surf2} style={{whiteSpace:"nowrap",fontSize:11}}>OK</PxBtn>
+            <PxBtn onClick={handleSaveBudget} color={P.accent} bg={P.surf2} style={{whiteSpace:"nowrap",fontSize:11}}>OK</PxBtn>
             <PxBtn onClick={()=>setEditBudget(false)} color={P.muted} style={{fontSize:11}}>✕</PxBtn>
           </div>
         )}

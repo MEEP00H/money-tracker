@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { P, CATEGORIES, CAT_COLORS, SAMPLE_WALLETS, SAMPLE_TXNS } from "./constants";
+import { supabase } from "./supabase";
+import { P, WALLET_ICONS, WALLET_COLORS } from "./constants";
 import { today, currentYM, calcBalance } from "./utils";
 import Header       from "./components/Header";
 import BottomNav    from "./components/BottomNav";
@@ -12,13 +13,63 @@ import WalletsView   from "./views/WalletsView";
 import HistoryView   from "./views/HistoryView";
 import AddView       from "./views/AddView";
 
-export default function MoneyTracker() {
+// ── Default categories for new users ──────────────────────────────────────
+const DEFAULT_CATEGORIES = [
+  {type:"income", name:"เงินเดือน",         color:"#00FF88",sort_order:0},
+  {type:"income", name:"ฟรีแลนซ์",           color:"#CC66FF",sort_order:1},
+  {type:"income", name:"ลงทุน",              color:"#FF8800",sort_order:2},
+  {type:"income", name:"โบนัส",              color:"#FFE600",sort_order:3},
+  {type:"income", name:"ขายของ",             color:"#00FFCC",sort_order:4},
+  {type:"income", name:"อื่นๆ",               color:"#8888AA",sort_order:99},
+  {type:"expense",name:"อาหาร",              color:"#FFB800",sort_order:0},
+  {type:"expense",name:"เดินทาง",            color:"#00CCFF",sort_order:1},
+  {type:"expense",name:"ช้อปปิ้ง",           color:"#FF66CC",sort_order:2},
+  {type:"expense",name:"บิล/สาธารณูปโภค",   color:"#AA88FF",sort_order:3},
+  {type:"expense",name:"บันเทิง",            color:"#00FF88",sort_order:4},
+  {type:"expense",name:"สุขภาพ",             color:"#FF4466",sort_order:5},
+  {type:"expense",name:"การศึกษา",           color:"#00FFFF",sort_order:6},
+  {type:"expense",name:"อื่นๆ",               color:"#8888AA",sort_order:99},
+];
+
+// ── Data helpers ──────────────────────────────────────────────────────────
+function buildCategoryMaps(rows) {
+  const categories  = {income:[],expense:[]};
+  const catColors   = {};
+  const catIdMap    = {};   // "type:name" → uuid
+  const catNameMap  = {};   // uuid → name
+  [...rows].sort((a,b)=>a.sort_order-b.sort_order).forEach(r=>{
+    categories[r.type].push(r.name);
+    catColors[r.name]            = r.color;
+    catIdMap[`${r.type}:${r.name}`] = r.id;
+    catNameMap[r.id]             = r.name;
+  });
+  return {categories,catColors,catIdMap,catNameMap};
+}
+
+function toLocalTxn(row, catNameMap) {
+  const base = {
+    id:     row.id,
+    type:   row.type,
+    amount: Number(row.amount),
+    note:   row.note || "",
+    date:   row.txn_date,
+  };
+  if (row.type === "transfer") {
+    return {...base, fromWalletId:row.from_wallet_id, toWalletId:row.to_wallet_id};
+  }
+  return {...base, walletId:row.wallet_id, category:catNameMap[row.category_id]||""};
+}
+
+// ── Component ─────────────────────────────────────────────────────────────
+export default function MoneyTracker({ user }) {
   const [txns,       setTxns]       = useState([]);
   const [wallets,    setWallets]    = useState([]);
+  const [catRows,    setCatRows]    = useState([]);   // raw Supabase category rows
+  const [budgets,    setBudgets]    = useState({});
   const [loaded,     setLoaded]     = useState(false);
+
   const [view,       setView]       = useState("dashboard");
   const [selectedMonth, setSelMonth]= useState(currentYM);
-  const [budgets,    setBudgets]    = useState({});
   const [activeWallet, setActiveWlt]= useState("all");
   const [filterType, setFilterType] = useState("all");
   const [addMode,    setAddMode]    = useState("expense");
@@ -27,35 +78,51 @@ export default function MoneyTracker() {
   const [toast,      setToast]      = useState("");
   const [walletModal,setWalletModal]= useState(null);
   const [walletForm, setWalletForm] = useState({name:"",icon:"💳",color:"#FFE600"});
-  const [categories, setCategories] = useState(CATEGORIES);
-  const [catColors,  setCatColors]  = useState(CAT_COLORS);
   const [catModal,   setCatModal]   = useState(null);
   const [formErr,    setFormErr]    = useState("");
   const [form,       setForm]       = useState({type:"expense",amount:"",category:"",note:"",date:today(),walletId:""});
   const [tfForm,     setTfForm]     = useState({fromWalletId:"",toWalletId:"",amount:"",note:"",date:today()});
 
-  // ── Storage ────────────────────────────────────────────────────────────
+  // Derived category maps (cheap to compute each render)
+  const {categories, catColors, catIdMap, catNameMap} = buildCategoryMaps(catRows);
+
+  // ── Load from Supabase ─────────────────────────────────────────────────
   useEffect(()=>{
     (async()=>{
-      try{
-        const [rw,rt,rb,rc,rcc]=await Promise.all([
-          window.storage.get("mt_w3"),window.storage.get("mt_t3"),window.storage.get("mt_b3"),
-          window.storage.get("mt_cat1"),window.storage.get("mt_cc1"),
-        ]);
-        setWallets(rw?.value?JSON.parse(rw.value):SAMPLE_WALLETS);
-        setTxns(rt?.value?JSON.parse(rt.value):SAMPLE_TXNS);
-        setBudgets(rb?.value?JSON.parse(rb.value):{});
-        setCategories(rc?.value?JSON.parse(rc.value):CATEGORIES);
-        setCatColors(rcc?.value?JSON.parse(rcc.value):CAT_COLORS);
-      }catch{setWallets(SAMPLE_WALLETS);setTxns(SAMPLE_TXNS);}
+      const [
+        {data:walletsData},
+        {data:catData},
+        {data:txnData},
+        {data:budgetData},
+      ] = await Promise.all([
+        supabase.from("wallets").select("*").order("sort_order"),
+        supabase.from("categories").select("*").order("sort_order"),
+        supabase.from("transactions").select("*").order("txn_date",{ascending:false}).order("created_at",{ascending:false}),
+        supabase.from("budgets").select("*"),
+      ]);
+
+      let cats = catData || [];
+
+      // Seed default categories for brand-new users
+      if (cats.length === 0) {
+        const toInsert = DEFAULT_CATEGORIES.map(c=>({...c, user_id:user.id}));
+        const {data:seeded} = await supabase.from("categories").insert(toInsert).select();
+        cats = seeded || [];
+      }
+
+      setCatRows(cats);
+      setWallets(walletsData || []);
+
+      const {catNameMap:nm} = buildCategoryMaps(cats);
+      setTxns((txnData||[]).map(r=>toLocalTxn(r,nm)));
+
+      const bMap = {};
+      (budgetData||[]).forEach(b=>{bMap[b.month_key]=Number(b.amount);});
+      setBudgets(bMap);
+
       setLoaded(true);
     })();
-  },[]);
-  useEffect(()=>{if(!loaded)return;window.storage.set("mt_w3",JSON.stringify(wallets)).catch(()=>{});},[wallets,loaded]);
-  useEffect(()=>{if(!loaded)return;window.storage.set("mt_t3",JSON.stringify(txns)).catch(()=>{});},[txns,loaded]);
-  useEffect(()=>{if(!loaded)return;window.storage.set("mt_b3",JSON.stringify(budgets)).catch(()=>{});},[budgets,loaded]);
-  useEffect(()=>{if(!loaded)return;window.storage.set("mt_cat1",JSON.stringify(categories)).catch(()=>{});},[categories,loaded]);
-  useEffect(()=>{if(!loaded)return;window.storage.set("mt_cc1",JSON.stringify(catColors)).catch(()=>{});},[catColors,loaded]);
+  },[user.id]);
 
   // ── Derived values for Header ──────────────────────────────────────────
   const totalBalance  = wallets.reduce((s,w)=>s+calcBalance(w.id,txns),0);
@@ -68,6 +135,8 @@ export default function MoneyTracker() {
   // ── Handlers ──────────────────────────────────────────────────────────
   const showToast = msg=>{setToast(msg);setTimeout(()=>setToast(""),2200);};
 
+  const handleLogout = ()=>supabase.auth.signOut();
+
   const openAdd = mode=>{
     setAddMode(mode);
     setForm(f=>({...f,type:mode==="income"?"income":"expense",walletId:activeWallet!=="all"?activeWallet:(wallets[0]?.id||"")}));
@@ -75,64 +144,130 @@ export default function MoneyTracker() {
     setFormErr("");setView("add");setFabOpen(false);
   };
 
-  const handleAdd = ()=>{
+  const handleAdd = async ()=>{
     if(addMode==="transfer"){
-      if(!tfForm.fromWalletId||!tfForm.toWalletId)return setFormErr("ERR: เลือกกระเป๋าต้นทางและปลายทาง");
-      if(tfForm.fromWalletId===tfForm.toWalletId)return setFormErr("ERR: กระเป๋าต้นทางและปลายทางห้ามซ้ำ");
-      if(!tfForm.amount||+tfForm.amount<=0)return setFormErr("ERR: กรอกจำนวนเงิน");
-      setTxns(p=>[{id:Date.now(),type:"transfer",amount:+tfForm.amount,note:tfForm.note||"โอนเงิน",date:tfForm.date,fromWalletId:tfForm.fromWalletId,toWalletId:tfForm.toWalletId},...p]);
+      if(!tfForm.fromWalletId||!tfForm.toWalletId) return setFormErr("ERR: เลือกกระเป๋าต้นทางและปลายทาง");
+      if(tfForm.fromWalletId===tfForm.toWalletId)  return setFormErr("ERR: กระเป๋าต้นทางและปลายทางห้ามซ้ำ");
+      if(!tfForm.amount||+tfForm.amount<=0)         return setFormErr("ERR: กรอกจำนวนเงิน");
+
+      const {data,error} = await supabase.from("transactions").insert({
+        user_id:user.id, type:"transfer", amount:+tfForm.amount,
+        note:tfForm.note||"โอนเงิน", txn_date:tfForm.date,
+        from_wallet_id:tfForm.fromWalletId, to_wallet_id:tfForm.toWalletId,
+      }).select().single();
+      if(error) return setFormErr("ERR: บันทึกไม่สำเร็จ");
+
+      setTxns(p=>[toLocalTxn(data,catNameMap),...p]);
       setTfForm({fromWalletId:"",toWalletId:"",amount:"",note:"",date:today()});
       setFormErr("");setView("dashboard");showToast(">> โอนเงินสำเร็จ");
-    }else{
-      if(!form.walletId)return setFormErr("ERR: เลือกกระเป๋าเงิน");
-      if(!form.amount||+form.amount<=0)return setFormErr("ERR: กรอกจำนวนเงินให้ถูกต้อง");
-      if(!form.category)return setFormErr("ERR: เลือกหมวดหมู่");
-      setTxns(p=>[{id:Date.now(),type:form.type,amount:+form.amount,category:form.category,note:form.note,date:form.date,walletId:form.walletId},...p]);
+    } else {
+      if(!form.walletId)                   return setFormErr("ERR: เลือกกระเป๋าเงิน");
+      if(!form.amount||+form.amount<=0)    return setFormErr("ERR: กรอกจำนวนเงินให้ถูกต้อง");
+      if(!form.category)                   return setFormErr("ERR: เลือกหมวดหมู่");
+
+      const categoryId = catIdMap[`${form.type}:${form.category}`];
+      const {data,error} = await supabase.from("transactions").insert({
+        user_id:user.id, type:form.type, amount:+form.amount,
+        category_id:categoryId, note:form.note, txn_date:form.date, wallet_id:form.walletId,
+      }).select().single();
+      if(error) return setFormErr("ERR: บันทึกไม่สำเร็จ");
+
+      setTxns(p=>[toLocalTxn(data,catNameMap),...p]);
       setForm(f=>({...f,amount:"",category:"",note:""}));
       setFormErr("");setView("dashboard");
       showToast(form.type==="income"?">> บันทึกรายรับแล้ว":">> บันทึกรายจ่ายแล้ว");
     }
   };
 
-  const handleDelete = id=>{setTxns(p=>p.filter(t=>t.id!==id));setDeleteId(null);showToast(">> ลบรายการแล้ว");};
+  const handleDelete = async id=>{
+    await supabase.from("transactions").delete().eq("id",id);
+    setTxns(p=>p.filter(t=>t.id!==id));
+    setDeleteId(null);showToast(">> ลบรายการแล้ว");
+  };
 
-  const saveWallet = ()=>{
-    if(!walletForm.name.trim())return;
+  const saveWallet = async ()=>{
+    if(!walletForm.name.trim()) return;
     if(walletModal==="new"){
-      const w={id:"w"+Date.now(),name:walletForm.name.trim(),icon:walletForm.icon,color:walletForm.color};
-      setWallets(p=>[...p,w]);showToast(`>> สร้าง "${w.name}" แล้ว`);
-    }else{
+      const {data,error} = await supabase.from("wallets").insert({
+        user_id:user.id, name:walletForm.name.trim(),
+        icon:walletForm.icon, color:walletForm.color, sort_order:wallets.length,
+      }).select().single();
+      if(error) return showToast("ERR: สร้างกระเป๋าไม่สำเร็จ");
+      setWallets(p=>[...p,{id:data.id,name:data.name,icon:data.icon,color:data.color}]);
+      showToast(`>> สร้าง "${data.name}" แล้ว`);
+    } else {
+      const {error} = await supabase.from("wallets").update({
+        name:walletForm.name.trim(), icon:walletForm.icon, color:walletForm.color,
+      }).eq("id",walletModal.id);
+      if(error) return showToast("ERR: แก้ไขกระเป๋าไม่สำเร็จ");
       setWallets(p=>p.map(w=>w.id===walletModal.id?{...w,...walletForm,name:walletForm.name.trim()}:w));
       showToast(">> แก้ไขกระเป๋าแล้ว");
     }
     setWalletModal(null);
   };
 
-  const addCategory = (type, name, color) => {
-    setCategories(c=>{
-      const rest=[...c[type].filter(n=>n!=="อื่นๆ"),name];
-      const hasOther=c[type].includes("อื่นๆ");
-      return{...c,[type]:hasOther?[...rest,"อื่นๆ"]:rest};
+  const addCategory = async (type, name, color) => {
+    const typeRows = catRows.filter(r=>r.type===type);
+    const maxOrder = typeRows.reduce((m,r)=>Math.max(m,r.sort_order),-1);
+    const sortOrder = name==="อื่นๆ"?99:maxOrder>=99?maxOrder:maxOrder+1;
+
+    const {data,error} = await supabase.from("categories").insert({
+      user_id:user.id, type, name, color, sort_order:sortOrder,
+    }).select().single();
+    if(error) return showToast("ERR: เพิ่มหมวดหมู่ไม่สำเร็จ");
+
+    setCatRows(prev=>{
+      const others = prev.filter(r=>r.type===type&&r.name==="อื่นๆ");
+      const rest   = prev.filter(r=>!(r.type===type&&r.name==="อื่นๆ"));
+      return [...rest,data,...others];
     });
-    setCatColors(c=>({...c,[name]:color}));
     showToast(`>> เพิ่ม "${name}" แล้ว`);
   };
 
-  const deleteCategory = (type, name) => {
-    setCategories(c=>({...c,[type]:c[type].filter(n=>n!==name)}));
+  const deleteCategory = async (type, name) => {
+    const row = catRows.find(r=>r.type===type&&r.name===name);
+    if(!row) return;
+    const {error} = await supabase.from("categories").delete().eq("id",row.id);
+    if(error) return showToast("ERR: ลบหมวดหมู่ไม่สำเร็จ");
+    setCatRows(prev=>prev.filter(r=>!(r.type===type&&r.name===name)));
     showToast(">> ลบหมวดหมู่แล้ว");
   };
 
-  const deleteWallet = id=>{
+  const deleteWallet = async id=>{
+    const {error} = await supabase.from("wallets").delete().eq("id",id);
+    if(error) return showToast("ERR: ลบกระเป๋าไม่สำเร็จ");
     setWallets(p=>p.filter(w=>w.id!==id));
     setTxns(p=>p.filter(t=>t.walletId!==id&&t.fromWalletId!==id&&t.toWalletId!==id));
-    if(activeWallet===id)setActiveWlt("all");
+    if(activeWallet===id) setActiveWlt("all");
     setWalletModal(null);showToast(">> ลบกระเป๋าแล้ว");
+  };
+
+  const saveBudget = async (month, amount) => {
+    if(amount>0){
+      await supabase.from("budgets").upsert(
+        {user_id:user.id, month_key:month, amount},
+        {onConflict:"user_id,month_key"}
+      );
+      setBudgets(b=>({...b,[month]:amount}));
+      showToast(">> งบประมาณบันทึกแล้ว");
+    } else {
+      await supabase.from("budgets").delete().match({user_id:user.id, month_key:month});
+      setBudgets(b=>{const c={...b};delete c[month];return c;});
+    }
   };
 
   const pressDown  = e=>{e.currentTarget.style.transform="translate(3px,3px)";e.currentTarget.style.boxShadow="1px 1px 0 #000";};
   const pressUp    = e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="4px 4px 0 #000";};
   const pressLeave = e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="4px 4px 0 #000";};
+
+  // ── Loading screen ─────────────────────────────────────────────────────
+  if (!loaded) {
+    return (
+      <div style={{background:P.bg,minHeight:"100svh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Courier New',monospace",color:P.accent,fontSize:13}}>
+        LOADING...
+      </div>
+    );
+  }
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
@@ -204,6 +339,7 @@ export default function MoneyTracker() {
       totalBalance={totalBalance}
       activeW={activeW}
       activeBalance={activeBalance}
+      onLogout={handleLogout}
     />
 
     <div style={{maxWidth:520,margin:"0 auto",padding:"var(--gap) var(--px) calc(var(--nav-h) + 24px)",position:"relative",zIndex:2}}>
@@ -212,7 +348,7 @@ export default function MoneyTracker() {
           selectedMonth={selectedMonth} setSelMonth={setSelMonth}
           wallets={wallets} txns={txns}
           activeWallet={activeWallet} setActiveWlt={setActiveWlt}
-          budgets={budgets} setBudgets={setBudgets}
+          budgets={budgets} saveBudget={saveBudget}
           setView={setView} setDeleteId={setDeleteId}
           showToast={showToast} catColors={catColors}
         />
