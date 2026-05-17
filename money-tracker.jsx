@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { P, SAMPLE_WALLETS, SAMPLE_TXNS } from "./constants";
+import { P, CATEGORIES, CAT_COLORS, SAMPLE_WALLETS, SAMPLE_TXNS } from "./constants";
 import { today, currentYM, calcBalance } from "./utils";
 import Header       from "./components/Header";
 import BottomNav    from "./components/BottomNav";
 import FAB          from "./components/FAB";
 import WalletModal  from "./components/WalletModal";
-import DeleteConfirm from "./components/DeleteConfirm";
+import DeleteConfirm   from "./components/DeleteConfirm";
+import CategoryModal  from "./components/CategoryModal";
 import DashboardView from "./views/DashboardView";
 import WalletsView   from "./views/WalletsView";
 import HistoryView   from "./views/HistoryView";
@@ -26,6 +27,9 @@ export default function MoneyTracker() {
   const [toast,      setToast]      = useState("");
   const [walletModal,setWalletModal]= useState(null);
   const [walletForm, setWalletForm] = useState({name:"",icon:"💳",color:"#FFE600"});
+  const [categories, setCategories] = useState(CATEGORIES);
+  const [catColors,  setCatColors]  = useState(CAT_COLORS);
+  const [catModal,   setCatModal]   = useState(null);
   const [formErr,    setFormErr]    = useState("");
   const [form,       setForm]       = useState({type:"expense",amount:"",category:"",note:"",date:today(),walletId:""});
   const [tfForm,     setTfForm]     = useState({fromWalletId:"",toWalletId:"",amount:"",note:"",date:today()});
@@ -34,10 +38,15 @@ export default function MoneyTracker() {
   useEffect(()=>{
     (async()=>{
       try{
-        const [rw,rt,rb]=await Promise.all([window.storage.get("mt_w3"),window.storage.get("mt_t3"),window.storage.get("mt_b3")]);
+        const [rw,rt,rb,rc,rcc]=await Promise.all([
+          window.storage.get("mt_w3"),window.storage.get("mt_t3"),window.storage.get("mt_b3"),
+          window.storage.get("mt_cat1"),window.storage.get("mt_cc1"),
+        ]);
         setWallets(rw?.value?JSON.parse(rw.value):SAMPLE_WALLETS);
         setTxns(rt?.value?JSON.parse(rt.value):SAMPLE_TXNS);
         setBudgets(rb?.value?JSON.parse(rb.value):{});
+        setCategories(rc?.value?JSON.parse(rc.value):CATEGORIES);
+        setCatColors(rcc?.value?JSON.parse(rcc.value):CAT_COLORS);
       }catch{setWallets(SAMPLE_WALLETS);setTxns(SAMPLE_TXNS);}
       setLoaded(true);
     })();
@@ -45,6 +54,8 @@ export default function MoneyTracker() {
   useEffect(()=>{if(!loaded)return;window.storage.set("mt_w3",JSON.stringify(wallets)).catch(()=>{});},[wallets,loaded]);
   useEffect(()=>{if(!loaded)return;window.storage.set("mt_t3",JSON.stringify(txns)).catch(()=>{});},[txns,loaded]);
   useEffect(()=>{if(!loaded)return;window.storage.set("mt_b3",JSON.stringify(budgets)).catch(()=>{});},[budgets,loaded]);
+  useEffect(()=>{if(!loaded)return;window.storage.set("mt_cat1",JSON.stringify(categories)).catch(()=>{});},[categories,loaded]);
+  useEffect(()=>{if(!loaded)return;window.storage.set("mt_cc1",JSON.stringify(catColors)).catch(()=>{});},[catColors,loaded]);
 
   // ── Derived values for Header ──────────────────────────────────────────
   const totalBalance  = wallets.reduce((s,w)=>s+calcBalance(w.id,txns),0);
@@ -95,6 +106,21 @@ export default function MoneyTracker() {
       showToast(">> แก้ไขกระเป๋าแล้ว");
     }
     setWalletModal(null);
+  };
+
+  const addCategory = (type, name, color) => {
+    setCategories(c=>{
+      const rest=[...c[type].filter(n=>n!=="อื่นๆ"),name];
+      const hasOther=c[type].includes("อื่นๆ");
+      return{...c,[type]:hasOther?[...rest,"อื่นๆ"]:rest};
+    });
+    setCatColors(c=>({...c,[name]:color}));
+    showToast(`>> เพิ่ม "${name}" แล้ว`);
+  };
+
+  const deleteCategory = (type, name) => {
+    setCategories(c=>({...c,[type]:c[type].filter(n=>n!==name)}));
+    showToast(">> ลบหมวดหมู่แล้ว");
   };
 
   const deleteWallet = id=>{
@@ -188,7 +214,7 @@ export default function MoneyTracker() {
           activeWallet={activeWallet} setActiveWlt={setActiveWlt}
           budgets={budgets} setBudgets={setBudgets}
           setView={setView} setDeleteId={setDeleteId}
-          showToast={showToast}
+          showToast={showToast} catColors={catColors}
         />
       )}
       {view==="wallets"&&(
@@ -216,6 +242,7 @@ export default function MoneyTracker() {
           wallets={wallets} txns={txns}
           handleAdd={handleAdd} setView={setView}
           pressDown={pressDown} pressUp={pressUp} pressLeave={pressLeave}
+          categories={categories} setCatModal={setCatModal}
         />
       )}
     </div>
@@ -230,6 +257,11 @@ export default function MoneyTracker() {
       pressDown={pressDown} pressUp={pressUp} pressLeave={pressLeave}
     />
     <DeleteConfirm deleteId={deleteId} setDeleteId={setDeleteId} handleDelete={handleDelete}/>
+    <CategoryModal
+      catModal={catModal} setCatModal={setCatModal}
+      categories={categories} catColors={catColors}
+      txns={txns} addCategory={addCategory} deleteCategory={deleteCategory}
+    />
 
     {toast&&(
       <div className="toast-el" style={{position:"fixed",top:62,right:14,background:P.surf,border:`2px solid ${P.accent}`,boxShadow:`3px 3px 0 ${P.accent}66`,padding:"8px 13px",fontSize:11,color:P.accent,zIndex:400,fontFamily:"'Courier New',monospace",letterSpacing:"0.04em"}}>

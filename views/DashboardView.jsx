@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { P, MONTHS } from "../constants";
-import { fmtShort, currentYM, monthLabel, prevMonth, nextMonth, getCat } from "../utils";
+import { fmtShort, currentYM, monthLabel, prevMonth, nextMonth } from "../utils";
 import { SLabel, PxCard, PxBtn, PxInput, PixelBar } from "../components/ui";
 import BarTooltip from "../components/BarTooltip";
 import TxnRow from "../components/TxnRow";
 
-export default function DashboardView({ selectedMonth, setSelMonth, wallets, txns, activeWallet, setActiveWlt, budgets, setBudgets, setView, setDeleteId, showToast }) {
+export default function DashboardView({ selectedMonth, setSelMonth, wallets, txns, activeWallet, setActiveWlt, budgets, setBudgets, setView, setDeleteId, showToast, catColors }) {
   const [editingBudget, setEditBudget] = useState(false);
   const [budgetInput,   setBudgetInput] = useState("");
 
@@ -166,7 +166,7 @@ export default function DashboardView({ selectedMonth, setSelMonth, wallets, txn
           <SLabel>CATEGORY BREAKDOWN</SLabel>
           <div style={{display:"flex",flexDirection:"column",gap:9}}>
             {catData.map((c,i)=>{
-              const color=getCat(c.name);const pct=Math.round((c.value/maxCat)*100);
+              const color=catColors[c.name]||"#8888AA";const pct=Math.round((c.value/maxCat)*100);
               return(<div key={i}>
                 <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
                   <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:8,height:8,background:color,flexShrink:0}}/><span style={{fontSize:11,color:P.muted}}>{c.name}</span></div>
@@ -208,6 +208,7 @@ export default function DashboardView({ selectedMonth, setSelMonth, wallets, txn
           </BarChart>
         </ResponsiveContainer>
       </PxCard>
+
 
     </div>
   );

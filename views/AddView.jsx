@@ -1,8 +1,8 @@
-import { P, CATEGORIES } from "../constants";
+import { P } from "../constants";
 import { fmtShort, calcBalance } from "../utils";
 import { PxInput, PxSelect, PxBtn } from "../components/ui";
 
-export default function AddView({ addMode, setAddMode, form, setForm, tfForm, setTfForm, formErr, setFormErr, wallets, txns, handleAdd, setView, pressDown, pressUp, pressLeave }) {
+export default function AddView({ addMode, setAddMode, form, setForm, tfForm, setTfForm, formErr, setFormErr, wallets, txns, handleAdd, setView, pressDown, pressUp, pressLeave, categories, setCatModal }) {
   return (
     <div className="fade-up" style={{display:"flex",flexDirection:"column",gap:14}}>
       <div style={{fontFamily:"'Press Start 2P',monospace",fontSize:"clamp(9px,3vw,12px)",color:P.accent,lineHeight:1.8}}>
@@ -61,10 +61,16 @@ export default function AddView({ addMode, setAddMode, form, setForm, tfForm, se
             style={{fontSize:24,fontFamily:"'VT323',monospace",color:form.type==="income"?P.green:P.red}}/>
         </div>
         <div>
-          <div style={{fontSize:9,color:P.muted,letterSpacing:"0.12em",marginBottom:6}}>CATEGORY</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <div style={{fontSize:9,color:P.muted,letterSpacing:"0.12em"}}>CATEGORY</div>
+            <button onClick={()=>setCatModal(form.type)}
+              style={{background:"none",border:"none",cursor:"pointer",fontSize:10,color:P.accent,fontFamily:"'Courier New',monospace",letterSpacing:"0.06em",touchAction:"manipulation"}}>
+              [EDIT]
+            </button>
+          </div>
           <PxSelect value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))}>
             <option value="">-- SELECT --</option>
-            {CATEGORIES[form.type].map(c=><option key={c} value={c}>{c}</option>)}
+            {(categories[form.type]||[]).map(c=><option key={c} value={c}>{c}</option>)}
           </PxSelect>
         </div>
         <div>

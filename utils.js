@@ -10,6 +10,9 @@ export const prevMonth  = ym => { const [y,m]=ym.split("-").map(Number); return 
 export const nextMonth  = ym => { const [y,m]=ym.split("-").map(Number); return m===12?`${y+1}-01`:`${y}-${String(m+1).padStart(2,"0")}`; };
 export const fmtDate    = d => { const dt=new Date(d); return `${dt.getDate()} ${MONTHS[dt.getMonth()]} ${dt.getFullYear()+543}`; };
 
+export const hexToRgb  = hex => `${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)}`;
+export const fmtCell   = n => n>=10000?`${Math.round(n/1000)}k`:n>=1000?`${(n/1000).toFixed(1)}k`:String(Math.round(n));
+
 export function calcBalance(wid, txns) {
   return txns.reduce((b,t) => {
     if (t.type==="income"  && t.walletId===wid)     return b+t.amount;
