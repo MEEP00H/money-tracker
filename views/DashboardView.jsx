@@ -127,7 +127,7 @@ export default function DashboardView({ selectedMonth, setSelMonth, wallets, txn
         </div>
         {editingBudget&&(
           <div style={{display:"flex",gap:7,marginBottom:10}}>
-            <PxInput type="number" placeholder="งบรายจ่าย..." value={budgetInput} onChange={e=>setBudgetInput(e.target.value)} autoFocus
+            <PxInput type="number" inputMode="decimal" placeholder="งบรายจ่าย..." value={budgetInput} onChange={e=>setBudgetInput(e.target.value)} autoFocus
               style={{flex:1,color:P.accent,fontFamily:"'VT323',monospace",fontSize:20}}/>
             <PxBtn onClick={handleSaveBudget} color={P.accent} bg={P.surf2} style={{whiteSpace:"nowrap",fontSize:11}}>OK</PxBtn>
             <PxBtn onClick={()=>setEditBudget(false)} color={P.muted} style={{fontSize:11}}>✕</PxBtn>

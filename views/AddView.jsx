@@ -31,7 +31,7 @@ export default function AddView({ addMode, setAddMode, form, setForm, tfForm, se
         ))}
         <div>
           <div style={{fontSize:9,color:P.muted,letterSpacing:"0.12em",marginBottom:6}}>AMOUNT (THB)</div>
-          <PxInput type="number" placeholder="0" value={tfForm.amount} onChange={e=>setTfForm(f=>({...f,amount:e.target.value}))}
+          <PxInput type="number" inputMode="decimal" placeholder="0" value={tfForm.amount} onChange={e=>setTfForm(f=>({...f,amount:e.target.value}))}
             style={{fontSize:24,fontFamily:"'VT323',monospace",color:P.cyan}}/>
         </div>
         <div>
@@ -57,7 +57,7 @@ export default function AddView({ addMode, setAddMode, form, setForm, tfForm, se
         </div>
         <div>
           <div style={{fontSize:9,color:P.muted,letterSpacing:"0.12em",marginBottom:6}}>AMOUNT (THB)</div>
-          <PxInput type="number" placeholder="0" value={form.amount} onChange={e=>setForm(f=>({...f,amount:e.target.value}))}
+          <PxInput type="number" inputMode="decimal" placeholder="0" value={form.amount} onChange={e=>setForm(f=>({...f,amount:e.target.value}))}
             style={{fontSize:24,fontFamily:"'VT323',monospace",color:form.type==="income"?P.green:P.red}}/>
         </div>
         <div>
