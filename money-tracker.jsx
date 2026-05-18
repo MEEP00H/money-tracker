@@ -367,6 +367,7 @@ export default function MoneyTracker({ user }) {
           txns={txns}
           filterType={filterType} setFilterType={setFilterType}
           wallets={wallets} setDeleteId={setDeleteId}
+          categories={categories} catColors={catColors}
         />
       )}
       {view==="add"&&(
