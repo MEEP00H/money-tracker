@@ -62,7 +62,7 @@ export default function AuthScreen() {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      padding: 16,
+      padding: `max(16px, env(safe-area-inset-top, 16px)) max(16px, env(safe-area-inset-right, 16px)) max(16px, env(safe-area-inset-bottom, 16px)) max(16px, env(safe-area-inset-left, 16px))`,
       backgroundImage: `linear-gradient(${P.surf}55 1px,transparent 1px),linear-gradient(90deg,${P.surf}55 1px,transparent 1px)`,
       backgroundSize: "20px 20px",
     }}>

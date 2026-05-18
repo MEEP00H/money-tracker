@@ -3,7 +3,14 @@ import { fmtShort } from "../utils";
 
 export default function Header({ view, monthBudget, budgetPct, activeWallet, totalBalance, activeW, activeBalance, onLogout }) {
   return (
-    <div style={{position:"sticky",top:0,zIndex:40,background:P.bg,borderBottom:`2px solid ${P.accent}`,padding:"0 var(--px)"}}>
+    <div style={{
+      position:"sticky", top:0, zIndex:40,
+      background:P.bg, borderBottom:`2px solid ${P.accent}`,
+      // ── safe area: top (notch), left/right (landscape notch) ──
+      paddingTop:"var(--safe-t)",
+      paddingLeft:"max(var(--px), var(--safe-l))",
+      paddingRight:"max(var(--px), var(--safe-r))",
+    }}>
       <div style={{maxWidth:520,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between",height:"clamp(46px,10vw,54px)"}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{fontFamily:"'Press Start 2P',monospace",fontSize:"clamp(10px,3.5vw,13px)",color:P.accent,lineHeight:1}}>LEDGER</div>

@@ -26,6 +26,7 @@ function App() {
         background: P.bg, minHeight: "100svh", display: "flex",
         alignItems: "center", justifyContent: "center",
         fontFamily: "'Courier New',monospace", color: P.accent, fontSize: 13,
+        paddingTop: "env(safe-area-inset-top, 0px)",
       }}>
         LOADING...
       </div>
