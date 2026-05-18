@@ -271,11 +271,10 @@ export default function MoneyTracker({ user }) {
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <div style={{fontFamily:"'Courier New',monospace",background:P.bg,minHeight:"100svh",color:P.text,position:"relative",WebkitTapHighlightColor:"transparent",backgroundImage:`linear-gradient(${P.surf}55 1px,transparent 1px),linear-gradient(90deg,${P.surf}55 1px,transparent 1px)`,backgroundSize:"20px 20px"}}>
+    <div style={{fontFamily:"'Courier New',monospace",background:P.bg,height:"100dvh",display:"flex",flexDirection:"column",color:P.text,position:"relative",WebkitTapHighlightColor:"transparent",backgroundImage:`linear-gradient(${P.surf}55 1px,transparent 1px),linear-gradient(90deg,${P.surf}55 1px,transparent 1px)`,backgroundSize:"20px 20px"}}>
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
       *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-      html,body{overflow-x:hidden;}
       html{-webkit-text-size-adjust:100%;}
       :root{--px:clamp(12px,4vw,18px);--gap:clamp(8px,2.5vw,12px);--safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);--safe-l:env(safe-area-inset-left,0px);--safe-r:env(safe-area-inset-right,0px);--nav-h:calc(64px + var(--safe-b));}
       body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.07) 3px,rgba(0,0,0,0.07) 4px);}
@@ -317,7 +316,7 @@ export default function MoneyTracker({ user }) {
       .fab-sub{background:#10101E;border:2px solid #3A3A5A;color:#C8C8E8;padding:9px 14px;cursor:pointer;font-family:'Courier New',monospace;font-size:12px;white-space:nowrap;box-shadow:3px 3px 0 #000;transition:all 0.08s;min-height:38px;touch-action:manipulation;}
       .fab-sub:hover{border-color:#FFE600;color:#FFE600;}
       .fab-sub:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000;}
-      .bottom-nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:#080810;border-top:2px solid #FFE600;display:flex;align-items:flex-start;justify-content:space-around;padding-top:8px;padding-bottom:var(--safe-b);padding-left:var(--safe-l);padding-right:var(--safe-r);z-index:40;}
+      .bottom-nav{flex-shrink:0;height:var(--nav-h);background:#080810;border-top:2px solid #FFE600;display:flex;align-items:flex-start;justify-content:space-around;padding-top:8px;padding-bottom:var(--safe-b);padding-left:var(--safe-l);padding-right:var(--safe-r);z-index:40;}
       .bnav{background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0;color:#2A2A44;transition:color 0.1s;min-width:60px;min-height:44px;touch-action:manipulation;font-family:'Courier New',monospace;}
       .bnav.active{color:#FFE600;}
       .bnav-icon{font-size:20px;}.bnav-label{font-size:9px;letter-spacing:0.05em;}
@@ -343,7 +342,7 @@ export default function MoneyTracker({ user }) {
       onLogout={handleLogout}
     />
 
-    <div style={{maxWidth:520,margin:"0 auto",padding:"var(--gap) var(--px) calc(var(--nav-h) + 24px)",position:"relative",zIndex:2}}>
+    <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",position:"relative",zIndex:2}}><div style={{maxWidth:520,margin:"0 auto",padding:"var(--gap) var(--px) 24px"}}>
       {view==="dashboard"&&(
         <DashboardView
           selectedMonth={selectedMonth} setSelMonth={setSelMonth}
@@ -383,7 +382,7 @@ export default function MoneyTracker({ user }) {
           categories={categories} setCatModal={setCatModal}
         />
       )}
-    </div>
+    </div></div>
 
     <FAB view={view} fabOpen={fabOpen} setFabOpen={setFabOpen} openAdd={openAdd}/>
     <BottomNav view={view} setView={setView} setFabOpen={setFabOpen}/>
