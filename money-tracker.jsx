@@ -271,10 +271,11 @@ export default function MoneyTracker({ user }) {
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <div style={{fontFamily:"'Courier New',monospace",background:P.bg,minHeight:"100svh",color:P.text,position:"relative",overflowX:"clip",WebkitTapHighlightColor:"transparent",backgroundImage:`linear-gradient(${P.surf}55 1px,transparent 1px),linear-gradient(90deg,${P.surf}55 1px,transparent 1px)`,backgroundSize:"20px 20px"}}>
+    <div style={{fontFamily:"'Courier New',monospace",background:P.bg,minHeight:"100svh",color:P.text,position:"relative",WebkitTapHighlightColor:"transparent",backgroundImage:`linear-gradient(${P.surf}55 1px,transparent 1px),linear-gradient(90deg,${P.surf}55 1px,transparent 1px)`,backgroundSize:"20px 20px"}}>
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
       *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+      html,body{overflow-x:hidden;}
       html{-webkit-text-size-adjust:100%;}
       :root{--px:clamp(12px,4vw,18px);--gap:clamp(8px,2.5vw,12px);--safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);--safe-l:env(safe-area-inset-left,0px);--safe-r:env(safe-area-inset-right,0px);--nav-h:calc(64px + var(--safe-b));}
       body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.07) 3px,rgba(0,0,0,0.07) 4px);}
