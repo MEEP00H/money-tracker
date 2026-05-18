@@ -37,6 +37,17 @@ export default function HistoryView({ txns, filterType, setFilterType, wallets, 
     })
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 
+  // Sort wallets by most recently used (latest transaction date first)
+  const walletLastUsed = {};
+  txns.forEach(t => {
+    [t.walletId, t.fromWalletId, t.toWalletId].forEach(wid => {
+      if (wid && t.date > (walletLastUsed[wid] || "")) walletLastUsed[wid] = t.date;
+    });
+  });
+  const sortedWallets = [...wallets].sort((a, b) =>
+    (walletLastUsed[b.id] || "").localeCompare(walletLastUsed[a.id] || "")
+  );
+
   const chipBase = { border: "2px solid", cursor: "pointer", fontFamily: "'Courier New',monospace", fontSize: 11, padding: "5px 11px", whiteSpace: "nowrap", background: P.surf, boxShadow: "2px 2px 0 #000", minHeight: 32, touchAction: "manipulation", transition: "all 0.08s" };
 
   return (
@@ -54,7 +65,7 @@ export default function HistoryView({ txns, filterType, setFilterType, wallets, 
       <div>
         <div style={{fontSize:9,color:P.muted,letterSpacing:"0.1em",marginBottom:5}}>WALLET</div>
         <div className="chip-scroll">
-          {[{id:"all",name:"ALL",icon:"★",color:P.accent},...wallets].map(w=>{
+          {[{id:"all",name:"ALL",icon:"★",color:P.accent},...sortedWallets].map(w=>{
             const active = filterWallet === w.id;
             return (
               <button key={w.id} onClick={()=>setFilterWallet(w.id)}

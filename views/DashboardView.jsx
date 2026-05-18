@@ -75,7 +75,7 @@ export default function DashboardView({ selectedMonth, setSelMonth, wallets, txn
 
       {/* Wallet chips */}
       <div className="chip-scroll">
-        {[{id:"all",name:"ALL",icon:"★",color:P.accent},...wallets].map(w=>(
+        {[{id:"all",name:"ALL",icon:"★",color:P.accent},...[...wallets].sort((a,b)=>{const lu={};txns.forEach(t=>{[t.walletId,t.fromWalletId,t.toWalletId].forEach(w=>w&&t.date>(lu[w]||"")&&(lu[w]=t.date));});return(lu[b.id]||"").localeCompare(lu[a.id]||"");})].map(w=>(
           <button key={w.id} className="wchip" onClick={()=>setActiveWlt(w.id)}
             style={{borderColor:activeWallet===w.id?w.color:P.border,color:activeWallet===w.id?w.color:P.muted,boxShadow:activeWallet===w.id?`2px 2px 0 ${w.color}44`:"2px 2px 0 #000"}}>
             {w.icon} {w.name}
