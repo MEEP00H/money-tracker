@@ -271,7 +271,7 @@ export default function MoneyTracker({ user }) {
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <div style={{fontFamily:"'Courier New',monospace",background:P.bg,minHeight:"100svh",color:P.text,position:"relative",overflowX:"hidden",WebkitTapHighlightColor:"transparent",backgroundImage:`linear-gradient(${P.surf}55 1px,transparent 1px),linear-gradient(90deg,${P.surf}55 1px,transparent 1px)`,backgroundSize:"20px 20px"}}>
+    <div style={{fontFamily:"'Courier New',monospace",background:P.bg,minHeight:"100svh",color:P.text,position:"relative",overflowX:"clip",WebkitTapHighlightColor:"transparent",backgroundImage:`linear-gradient(${P.surf}55 1px,transparent 1px),linear-gradient(90deg,${P.surf}55 1px,transparent 1px)`,backgroundSize:"20px 20px"}}>
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
       *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}

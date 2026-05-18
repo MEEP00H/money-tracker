@@ -7,7 +7,8 @@
       "Bash(npm run *)",
       "mcp__Claude_Preview__preview_start",
       "Read(//Users/mheepooh/Desktop/Hoya/money-tracker/**)",
-      "Read(//Users/mheepooh/Desktop/Hoya/money-tracker/.claude/**)"
+      "Read(//Users/mheepooh/Desktop/Hoya/money-tracker/.claude/**)",
+      "Bash(xargs ls -la)"
     ]
   }
 }
