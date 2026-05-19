@@ -2,7 +2,25 @@ import { P } from "../constants";
 import { fmtShort, calcBalance } from "../utils";
 import { PxInput, PxSelect, PxBtn } from "../components/ui";
 
+function sortByLastUsed(wallets, txns) {
+  const lastUsed = {};
+  txns.forEach(t => {
+    const ids = t.type === "transfer"
+      ? [t.fromWalletId, t.toWalletId]
+      : [t.walletId];
+    ids.forEach(id => {
+      if (!lastUsed[id] || t.date > lastUsed[id]) lastUsed[id] = t.date;
+    });
+  });
+  return [...wallets].sort((a, b) => {
+    const da = lastUsed[a.id] || "";
+    const db = lastUsed[b.id] || "";
+    return da < db ? 1 : da > db ? -1 : 0;
+  });
+}
+
 export default function AddView({ addMode, setAddMode, form, setForm, tfForm, setTfForm, formErr, setFormErr, wallets, txns, handleAdd, setView, pressDown, pressUp, pressLeave, categories, setCatModal }) {
+  const sortedWallets = sortByLastUsed(wallets, txns);
   return (
     <div className="fade-up" style={{display:"flex",flexDirection:"column",gap:14}}>
       <div style={{fontFamily:"'Press Start 2P',monospace",fontSize:"clamp(9px,3vw,12px)",color:P.accent,lineHeight:1.8}}>
@@ -46,7 +64,7 @@ export default function AddView({ addMode, setAddMode, form, setForm, tfForm, se
         <div>
           <div style={{fontSize:9,color:P.muted,letterSpacing:"0.12em",marginBottom:6}}>WALLET</div>
           <div className="chip-scroll">
-            {wallets.map(w=>(
+            {sortedWallets.map(w=>(
               <button key={w.id} className="wchip" onClick={()=>setForm(f=>({...f,walletId:w.id}))}
                 style={{borderColor:form.walletId===w.id?w.color:P.border,color:form.walletId===w.id?w.color:P.muted,boxShadow:form.walletId===w.id?`2px 2px 0 ${w.color}44`:"2px 2px 0 #000",padding:"8px 12px",fontSize:12}}>
                 {w.icon} {w.name}
