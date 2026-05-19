@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 import { P, WALLET_ICONS, WALLET_COLORS } from "./constants";
-import { today, currentYM, calcBalance } from "./utils";
+import { today, currentYM, calcBalance, sortByLastUsed } from "./utils";
 import Header       from "./components/Header";
 import BottomNav    from "./components/BottomNav";
 import FAB          from "./components/FAB";
@@ -139,7 +139,8 @@ export default function MoneyTracker({ user }) {
 
   const openAdd = mode=>{
     setAddMode(mode);
-    setForm(f=>({...f,type:mode==="income"?"income":"expense",walletId:activeWallet!=="all"?activeWallet:(wallets[0]?.id||"")}));
+    const defaultWallet = activeWallet!=="all" ? activeWallet : (sortByLastUsed(wallets, txns)[0]?.id || "");
+    setForm(f=>({...f,type:mode==="income"?"income":"expense",walletId:defaultWallet}));
     setTfForm(f=>({...f,fromWalletId:activeWallet!=="all"?activeWallet:"",toWalletId:""}));
     setFormErr("");setView("add");setFabOpen(false);
   };

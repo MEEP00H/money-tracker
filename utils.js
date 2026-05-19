@@ -13,6 +13,23 @@ export const fmtDate    = d => { const dt=new Date(d); return `${dt.getDate()} $
 export const hexToRgb  = hex => `${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)}`;
 export const fmtCell   = n => n>=10000?`${Math.round(n/1000)}k`:n>=1000?`${(n/1000).toFixed(1)}k`:String(Math.round(n));
 
+export function sortByLastUsed(wallets, txns) {
+  const lastUsed = {};
+  txns.forEach(t => {
+    const ids = t.type === "transfer"
+      ? [t.fromWalletId, t.toWalletId]
+      : [t.walletId];
+    ids.forEach(id => {
+      if (!lastUsed[id] || t.date > lastUsed[id]) lastUsed[id] = t.date;
+    });
+  });
+  return [...wallets].sort((a, b) => {
+    const da = lastUsed[a.id] || "";
+    const db = lastUsed[b.id] || "";
+    return da < db ? 1 : da > db ? -1 : 0;
+  });
+}
+
 export function calcBalance(wid, txns) {
   return txns.reduce((b,t) => {
     if (t.type==="income"  && t.walletId===wid)     return b+t.amount;

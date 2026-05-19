@@ -1,23 +1,6 @@
 import { P } from "../constants";
-import { fmtShort, calcBalance } from "../utils";
+import { fmtShort, calcBalance, sortByLastUsed } from "../utils";
 import { PxInput, PxSelect, PxBtn } from "../components/ui";
-
-function sortByLastUsed(wallets, txns) {
-  const lastUsed = {};
-  txns.forEach(t => {
-    const ids = t.type === "transfer"
-      ? [t.fromWalletId, t.toWalletId]
-      : [t.walletId];
-    ids.forEach(id => {
-      if (!lastUsed[id] || t.date > lastUsed[id]) lastUsed[id] = t.date;
-    });
-  });
-  return [...wallets].sort((a, b) => {
-    const da = lastUsed[a.id] || "";
-    const db = lastUsed[b.id] || "";
-    return da < db ? 1 : da > db ? -1 : 0;
-  });
-}
 
 export default function AddView({ addMode, setAddMode, form, setForm, tfForm, setTfForm, formErr, setFormErr, wallets, txns, handleAdd, setView, pressDown, pressUp, pressLeave, categories, setCatModal }) {
   const sortedWallets = sortByLastUsed(wallets, txns);
