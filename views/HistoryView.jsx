@@ -1,19 +1,19 @@
 import { useState } from "react";
 import { P } from "../constants";
-import { PxCard } from "../components/ui";
+import { currentYM, prevMonth, nextMonth, monthLabel } from "../utils";
+import { PxCard, PxBtn } from "../components/ui";
 import TxnRow from "../components/TxnRow";
 
 export default function HistoryView({ txns, filterType, setFilterType, wallets, setDeleteId, categories, catColors }) {
   const [filterWallet, setFilterWallet] = useState("all");
   const [filterCat,    setFilterCat]    = useState("all");
+  const [filterMonth,  setFilterMonth]  = useState(currentYM());
 
-  // Reset child filters when type changes
   const handleTypeChange = v => {
     setFilterType(v);
     setFilterCat("all");
   };
 
-  // Derive which categories to show based on type
   const visibleCats = filterType === "income"
     ? categories.income
     : filterType === "expense"
@@ -24,6 +24,7 @@ export default function HistoryView({ txns, filterType, setFilterType, wallets, 
 
   const histFiltered = txns
     .filter(t => {
+      if (!t.date.startsWith(filterMonth)) return false;
       if (filterType !== "all" && t.type !== filterType) return false;
       if (filterWallet !== "all") {
         if (t.type === "transfer") {
@@ -37,7 +38,6 @@ export default function HistoryView({ txns, filterType, setFilterType, wallets, 
     })
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  // Sort wallets by most recently used (latest transaction date first)
   const walletLastUsed = {};
   txns.forEach(t => {
     [t.walletId, t.fromWalletId, t.toWalletId].forEach(wid => {
@@ -53,6 +53,16 @@ export default function HistoryView({ txns, filterType, setFilterType, wallets, 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
       <div style={{fontFamily:"'Press Start 2P',monospace",fontSize:"clamp(9px,3vw,12px)",color:P.accent,lineHeight:1.8}}>HISTORY</div>
+
+      {/* Month filter */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"2px 0"}}>
+        <PxBtn onClick={()=>setFilterMonth(prevMonth(filterMonth))} color={P.accent}>◄</PxBtn>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontFamily:"'Press Start 2P',monospace",fontSize:"clamp(9px,3.5vw,11px)",color:P.text,lineHeight:1.6}}>{monthLabel(filterMonth)}</div>
+          {filterMonth===currentYM()&&<div style={{fontSize:9,color:P.accent,fontFamily:"'Courier New',monospace",letterSpacing:"0.1em",marginTop:2}}>[ THIS MONTH ]</div>}
+        </div>
+        <PxBtn onClick={()=>{if(filterMonth<currentYM())setFilterMonth(nextMonth(filterMonth));}} color={P.accent} disabled={filterMonth>=currentYM()}>►</PxBtn>
+      </div>
 
       {/* Type filter */}
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
@@ -77,7 +87,7 @@ export default function HistoryView({ txns, filterType, setFilterType, wallets, 
         </div>
       </div>
 
-      {/* Category filter — only for income / expense */}
+      {/* Category filter */}
       {showCatFilter && (
         <div>
           <div style={{fontSize:9,color:P.muted,letterSpacing:"0.1em",marginBottom:5}}>CATEGORY</div>
