@@ -6,6 +6,48 @@ import { SLabel, PxCard, PxBtn, PxInput, PixelBar } from "../components/ui";
 import BarTooltip from "../components/BarTooltip";
 import TxnRow from "../components/TxnRow";
 
+function FoodDailyCard({ dailyEntries, avgDailyFood, foodColor, selectedMonth }) {
+  const [showAll, setShowAll] = useState(false);
+  const foodEntries = dailyEntries.filter(e=>e.food>0);
+  const maxFood = foodEntries[0]?.food||1;
+  const visible = showAll ? foodEntries : foodEntries.slice(0,3);
+  const [,mStr] = selectedMonth.split("-");
+
+  return (
+    <PxCard className="fade-up">
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+        <SLabel>🍜 อาหาร/วัน</SLabel>
+        <div style={{fontFamily:"'VT323',monospace",fontSize:16,color:foodColor}}>AVG ฿{fmtShort(avgDailyFood)}/day</div>
+      </div>
+      {foodEntries.length===0
+        ?<div style={{fontSize:11,color:P.border,textAlign:"center",padding:"12px 0"}}>// ยังไม่มีรายการอาหารเดือนนี้</div>
+        :<>
+          <div style={{display:"flex",flexDirection:"column",gap:5}}>
+            {visible.map(({day,food})=>{
+              const pct = Math.round((food/maxFood)*100);
+              return(
+                <div key={day} style={{background:P.bg,border:`1px solid ${foodColor}33`,padding:"7px 10px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                    <span style={{fontSize:10,color:P.muted,fontFamily:"'Courier New',monospace"}}>{day}/{mStr}</span>
+                    <span style={{fontFamily:"'VT323',monospace",fontSize:20,color:foodColor}}>฿{fmtShort(food)}</span>
+                  </div>
+                  <PixelBar pct={pct} color={foodColor} height={5}/>
+                </div>
+              );
+            })}
+          </div>
+          {foodEntries.length>3&&(
+            <button onClick={()=>setShowAll(p=>!p)}
+              style={{background:"none",border:"none",cursor:"pointer",fontSize:10,color:P.accent,fontFamily:"'Courier New',monospace",letterSpacing:"0.06em",marginTop:8,padding:0,touchAction:"manipulation"}}>
+              {showAll?`[▲ ซ่อน]`:`[+ ดูทั้งหมด ${foodEntries.length} วัน]`}
+            </button>
+          )}
+        </>
+      }
+    </PxCard>
+  );
+}
+
 export default function DashboardView({ selectedMonth, setSelMonth, wallets, txns, activeWallet, setActiveWlt, budgets, saveBudget, setView, setDeleteId, showToast, catColors }) {
   const [editingBudget, setEditBudget] = useState(false);
   const [budgetInput,   setBudgetInput] = useState("");
@@ -165,31 +207,12 @@ export default function DashboardView({ selectedMonth, setSelMonth, wallets, txn
       </PxCard>
 
       {/* Daily food expense */}
-      <PxCard className="fade-up">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-          <SLabel>🍜 อาหาร/วัน</SLabel>
-          <div style={{fontFamily:"'VT323',monospace",fontSize:16,color:foodColor}}>AVG ฿{fmtShort(avgDailyFood)}/day</div>
-        </div>
-        {dailyEntries.filter(e=>e.food>0).length===0
-          ?<div style={{fontSize:11,color:P.border,textAlign:"center",padding:"12px 0"}}>// ยังไม่มีรายการอาหารเดือนนี้</div>
-          :<div style={{display:"flex",flexDirection:"column",gap:5}}>
-            {dailyEntries.filter(e=>e.food>0).map(({day,food})=>{
-              const maxFood = Math.max(...dailyEntries.map(e=>e.food));
-              const pct = Math.round((food/maxFood)*100);
-              const [,mStr]=selectedMonth.split("-");
-              return(
-                <div key={day} style={{background:P.bg,border:`1px solid ${foodColor}33`,padding:"7px 10px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                    <span style={{fontSize:10,color:P.muted,fontFamily:"'Courier New',monospace"}}>{day}/{mStr}</span>
-                    <span style={{fontFamily:"'VT323',monospace",fontSize:20,color:foodColor}}>฿{fmtShort(food)}</span>
-                  </div>
-                  <PixelBar pct={pct} color={foodColor} height={5}/>
-                </div>
-              );
-            })}
-          </div>
-        }
-      </PxCard>
+      <FoodDailyCard
+        dailyEntries={dailyEntries}
+        avgDailyFood={avgDailyFood}
+        foodColor={foodColor}
+        selectedMonth={selectedMonth}
+      />
 
       {/* Weekly breakdown */}
       <PxCard className="fade-up">
