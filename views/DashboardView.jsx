@@ -76,12 +76,10 @@ export default function DashboardView({ selectedMonth, setSelMonth, wallets, txn
     return acc;
   },{});
   const totalFoodMonth = monthTxns.filter(t=>t.type==="expense"&&t.category==="อาหาร").reduce((s,t)=>s+t.amount,0);
-  const avgDailyExpense = daysElapsed>0 ? monthTotals.expense/daysElapsed : 0;
   const avgDailyFood    = daysElapsed>0 ? totalFoodMonth/daysElapsed : 0;
   const dailyEntries = Object.entries(expensesByDay)
-    .map(([day,vals])=>({day,total:vals.total,food:vals.food}))
+    .map(([day,vals])=>({day,food:vals.food}))
     .sort((a,b)=>Number(b.day)-Number(a.day));
-  const maxDayTotal = dailyEntries[0]?.total||1;
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:"var(--gap)"}}>
@@ -166,49 +164,26 @@ export default function DashboardView({ selectedMonth, setSelMonth, wallets, txn
         {!monthBudget&&!editingBudget&&<div style={{fontSize:11,color:P.border,marginTop:2}}>// กด [ตั้งงบ+] เพื่อ track รายจ่าย</div>}
       </PxCard>
 
-      {/* Daily expense */}
+      {/* Daily food expense */}
       <PxCard className="fade-up">
-        <SLabel>DAILY EXPENSE</SLabel>
-        <div style={{display:"flex",gap:8,marginBottom:12}}>
-          <div style={{flex:1,background:P.bg,border:`1px solid ${P.border}`,padding:"8px 10px"}}>
-            <div style={{fontSize:9,color:P.muted,letterSpacing:"0.08em",marginBottom:3}}>AVG/DAY</div>
-            <div style={{fontFamily:"'VT323',monospace",fontSize:24,color:P.red}}>฿{fmtShort(avgDailyExpense)}</div>
-          </div>
-          <div style={{flex:1,background:P.bg,border:`1px solid ${foodColor}55`,padding:"8px 10px"}}>
-            <div style={{fontSize:9,color:P.muted,letterSpacing:"0.08em",marginBottom:3}}>อาหาร/DAY</div>
-            <div style={{fontFamily:"'VT323',monospace",fontSize:24,color:foodColor}}>฿{fmtShort(avgDailyFood)}</div>
-          </div>
-          <div style={{flex:1,background:P.bg,border:`1px solid ${P.border}`,padding:"8px 10px"}}>
-            <div style={{fontSize:9,color:P.muted,letterSpacing:"0.08em",marginBottom:3}}>DAYS TRACKED</div>
-            <div style={{fontFamily:"'VT323',monospace",fontSize:24,color:P.muted}}>{daysElapsed}d</div>
-          </div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <SLabel>🍜 อาหาร/วัน</SLabel>
+          <div style={{fontFamily:"'VT323',monospace",fontSize:16,color:foodColor}}>AVG ฿{fmtShort(avgDailyFood)}/day</div>
         </div>
-        {dailyEntries.length===0
-          ?<div style={{fontSize:11,color:P.border,textAlign:"center",padding:"12px 0"}}>// ยังไม่มีรายจ่ายเดือนนี้</div>
+        {dailyEntries.filter(e=>e.food>0).length===0
+          ?<div style={{fontSize:11,color:P.border,textAlign:"center",padding:"12px 0"}}>// ยังไม่มีรายการอาหารเดือนนี้</div>
           :<div style={{display:"flex",flexDirection:"column",gap:5}}>
-            {dailyEntries.map(({day,total,food})=>{
-              const pct = Math.round((total/maxDayTotal)*100);
-              const foodPct = total>0 ? Math.round((food/total)*100) : 0;
+            {dailyEntries.filter(e=>e.food>0).map(({day,food})=>{
+              const maxFood = Math.max(...dailyEntries.map(e=>e.food));
+              const pct = Math.round((food/maxFood)*100);
               const [,mStr]=selectedMonth.split("-");
-              const label = `${day}/${mStr}`;
               return(
-                <div key={day} style={{background:P.bg,border:`1px solid ${P.border}`,padding:"7px 10px"}}>
+                <div key={day} style={{background:P.bg,border:`1px solid ${foodColor}33`,padding:"7px 10px"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                    <span style={{fontSize:10,color:P.muted,fontFamily:"'Courier New',monospace"}}>{label}</span>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      {food>0&&(
-                        <span style={{fontSize:10,color:foodColor,fontFamily:"'Courier New',monospace"}}>
-                          🍜 ฿{fmtShort(food)}
-                        </span>
-                      )}
-                      <span style={{fontFamily:"'VT323',monospace",fontSize:18,color:P.red}}>฿{fmtShort(total)}</span>
-                    </div>
+                    <span style={{fontSize:10,color:P.muted,fontFamily:"'Courier New',monospace"}}>{day}/{mStr}</span>
+                    <span style={{fontFamily:"'VT323',monospace",fontSize:20,color:foodColor}}>฿{fmtShort(food)}</span>
                   </div>
-                  <div style={{height:5,background:P.surf2,position:"relative"}}>
-                    <div style={{position:"absolute",left:0,top:0,height:"100%",width:`${pct}%`,background:P.red,opacity:0.7}}/>
-                    {food>0&&<div style={{position:"absolute",left:0,top:0,height:"100%",width:`${Math.round((food/maxDayTotal)*100)}%`,background:foodColor,opacity:0.9}}/>}
-                  </div>
-                  {food>0&&<div style={{fontSize:9,color:foodColor,marginTop:3,opacity:0.8}}>อาหาร {foodPct}% ของวันนี้</div>}
+                  <PixelBar pct={pct} color={foodColor} height={5}/>
                 </div>
               );
             })}
