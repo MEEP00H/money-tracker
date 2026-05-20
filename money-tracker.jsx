@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import { P, WALLET_ICONS, WALLET_COLORS } from "./constants";
 import { today, currentYM, calcBalance, sortByLastUsed } from "./utils";
@@ -68,7 +68,10 @@ export default function MoneyTracker({ user }) {
   const [budgets,    setBudgets]    = useState({});
   const [loaded,     setLoaded]     = useState(false);
 
+  const scrollRef    = useRef(null);
   const [view,       setView]       = useState("dashboard");
+
+  useEffect(()=>{ scrollRef.current?.scrollTo({top:0}); },[view]);
   const [selectedMonth, setSelMonth]= useState(currentYM);
   const [activeWallet, setActiveWlt]= useState("all");
   const [filterType, setFilterType] = useState("all");
@@ -343,7 +346,7 @@ export default function MoneyTracker({ user }) {
       onLogout={handleLogout}
     />
 
-    <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",position:"relative",zIndex:2}}><div style={{maxWidth:520,margin:"0 auto",padding:"var(--gap) var(--px) 24px"}}>
+    <div ref={scrollRef} style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",position:"relative",zIndex:2}}><div style={{maxWidth:520,margin:"0 auto",padding:"var(--gap) var(--px) 24px"}}>
       {view==="dashboard"&&(
         <DashboardView
           selectedMonth={selectedMonth} setSelMonth={setSelMonth}
