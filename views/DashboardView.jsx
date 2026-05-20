@@ -248,22 +248,26 @@ export default function DashboardView({ selectedMonth, setSelMonth, wallets, txn
         </PxCard>
       )}
 
-      {/* Month transactions */}
-      <div className="fade-up">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-          <SLabel>TRANSACTIONS [{monthTxns.length}]</SLabel>
-          {monthTxns.length>5&&(
-            <button style={{background:"none",border:"none",cursor:"pointer",fontSize:10,color:P.accent,fontFamily:"'Courier New',monospace",touchAction:"manipulation"}}
-              onClick={()=>setView("history")}>[ALL →]</button>
-          )}
-        </div>
-        {monthTxns.length===0
-          ?<PxCard style={{textAlign:"center",color:P.border,fontSize:11,padding:"28px 14px"}}>// NO TRANSACTIONS<br/><span style={{fontSize:10,marginTop:6,display:"block"}}>press [+] to add entry</span></PxCard>
-          :<div style={{display:"flex",flexDirection:"column",gap:5}}>
-            {monthTxns.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t=><TxnRow key={t.id} t={t} wallets={wallets} onDelete={()=>setDeleteId(t.id)}/>)}
+      {/* Today's transactions */}
+      {(()=>{
+        const todayStr = new Date().toISOString().split("T")[0];
+        const todayTxns = monthTxns.filter(t=>t.date===todayStr).sort((a,b)=>new Date(b.date)-new Date(a.date));
+        return(
+          <div className="fade-up">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <SLabel>TODAY [{todayTxns.length}]</SLabel>
+              <button style={{background:"none",border:"none",cursor:"pointer",fontSize:10,color:P.accent,fontFamily:"'Courier New',monospace",touchAction:"manipulation"}}
+                onClick={()=>setView("history")}>[ดูทั้งหมด →]</button>
+            </div>
+            {todayTxns.length===0
+              ?<PxCard style={{textAlign:"center",color:P.border,fontSize:11,padding:"28px 14px"}}>// ยังไม่มีรายการวันนี้<br/><span style={{fontSize:10,marginTop:6,display:"block"}}>press [+] to add entry</span></PxCard>
+              :<div style={{display:"flex",flexDirection:"column",gap:5}}>
+                {todayTxns.map(t=><TxnRow key={t.id} t={t} wallets={wallets} onDelete={()=>setDeleteId(t.id)}/>)}
+              </div>
+            }
           </div>
-        }
-      </div>
+        );
+      })()}
 
       {/* 6-month trend */}
       <PxCard className="fade-up">
