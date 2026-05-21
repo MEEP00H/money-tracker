@@ -69,7 +69,13 @@ export default function DashboardView({ selectedMonth, setSelMonth, wallets, txn
         if(t.type==="transfer"&&t.toWalletId===activeWallet)  return b+t.amount;
         return b;
       },0);
-  const closingBalance = carryForward+monthNet;
+  const monthTransferDelta = activeWallet==="all" ? 0 :
+    monthTxns.reduce((b,t)=>{
+      if(t.type==="transfer"&&t.fromWalletId===activeWallet) return b-t.amount;
+      if(t.type==="transfer"&&t.toWalletId===activeWallet)   return b+t.amount;
+      return b;
+    },0);
+  const closingBalance = carryForward+monthNet+monthTransferDelta;
 
   const activeW    = wallets.find(w=>w.id===activeWallet);
   const activeColor= activeW?.color||P.accent;
@@ -159,10 +165,15 @@ export default function DashboardView({ selectedMonth, setSelMonth, wallets, txn
             </span>
           </div>
         </div>
-        {[["CARRY FWD",carryForward,P.muted,"↳"],["+ INCOME",monthTotals.income,P.green,"▲"],["- EXPENSE",monthTotals.expense,P.red,"▼"]].map(([lbl,val,color,icon])=>(
+        {[
+          ["CARRY FWD",carryForward,P.muted,"↳"],
+          ["+ INCOME",monthTotals.income,P.green,"▲"],
+          ["- EXPENSE",monthTotals.expense,P.red,"▼"],
+          ...(monthTransferDelta!==0?[[monthTransferDelta>0?"↔ TFR IN":"↔ TFR OUT",monthTransferDelta,P.cyan,"↔"]]:[] ),
+        ].map(([lbl,val,color,icon])=>(
           <div key={lbl} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 8px",marginBottom:3,background:P.bg,border:`1px solid ${P.border}`}}>
             <span style={{fontSize:10,color:P.muted,display:"flex",alignItems:"center",gap:6}}><span style={{color,minWidth:12}}>{icon}</span>{lbl}</span>
-            <span style={{fontFamily:"'VT323',monospace",fontSize:18,color}}>฿{fmtShort(val)}</span>
+            <span style={{fontFamily:"'VT323',monospace",fontSize:18,color}}>{val<0?"-":""}฿{fmtShort(Math.abs(val))}</span>
           </div>
         ))}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 8px",marginTop:4,background:P.surf2,border:`1px solid ${activeColor}44`}}>
