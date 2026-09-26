@@ -1,17 +1,19 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import { P, WALLET_ICONS, WALLET_COLORS } from "./constants";
-import { today, currentYM, calcBalance, sortByLastUsed } from "./utils";
+import { today, localToday, currentYM, calcBalance, sortByLastUsed } from "./utils";
 import Header       from "./components/Header";
 import BottomNav    from "./components/BottomNav";
 import FAB          from "./components/FAB";
 import WalletModal  from "./components/WalletModal";
 import DeleteConfirm   from "./components/DeleteConfirm";
 import CategoryModal  from "./components/CategoryModal";
+import SubscriptionModal from "./components/SubscriptionModal";
 import DashboardView from "./views/DashboardView";
 import WalletsView   from "./views/WalletsView";
 import HistoryView   from "./views/HistoryView";
 import AddView       from "./views/AddView";
+import SubscriptionsView from "./views/SubscriptionsView";
 
 // ── Default categories for new users ──────────────────────────────────────
 const DEFAULT_CATEGORIES = [
@@ -57,8 +59,24 @@ function toLocalTxn(row, catNameMap) {
   if (row.type === "transfer") {
     return {...base, fromWalletId:row.from_wallet_id, toWalletId:row.to_wallet_id};
   }
-  return {...base, walletId:row.wallet_id, category:catNameMap[row.category_id]||""};
+  return {...base, walletId:row.wallet_id, category:catNameMap[row.category_id]||"", subscriptionId:row.subscription_id};
 }
+
+function toLocalSub(row, catNameMap) {
+  return {
+    id:       row.id,
+    name:     row.name,
+    amount:   Number(row.amount),
+    cycle:    row.cycle,
+    nextDate: row.next_charge_date,
+    walletId: row.wallet_id,
+    category: catNameMap[row.category_id]||"",
+    active:   row.active,
+  };
+}
+
+const fetchTxns = () => supabase.from("transactions").select("*").order("txn_date",{ascending:false}).order("created_at",{ascending:false});
+const fetchSubs = () => supabase.from("subscriptions").select("*").order("next_charge_date");
 
 // ── Component ─────────────────────────────────────────────────────────────
 export default function MoneyTracker({ user }) {
@@ -66,6 +84,8 @@ export default function MoneyTracker({ user }) {
   const [wallets,    setWallets]    = useState([]);
   const [catRows,    setCatRows]    = useState([]);   // raw Supabase category rows
   const [budgets,    setBudgets]    = useState({});
+  const [subs,       setSubs]       = useState([]);
+  const [subModal,   setSubModal]   = useState(null);
   const [loaded,     setLoaded]     = useState(false);
 
   const scrollRef    = useRef(null);
@@ -92,16 +112,21 @@ export default function MoneyTracker({ user }) {
   // ── Load from Supabase ─────────────────────────────────────────────────
   useEffect(()=>{
     (async()=>{
+      // Post any subscription charges that came due before loading transactions
+      const {data:charged} = await supabase.rpc("charge_due_subscriptions");
+
       const [
         {data:walletsData},
         {data:catData},
         {data:txnData},
         {data:budgetData},
+        {data:subData},
       ] = await Promise.all([
         supabase.from("wallets").select("*").order("sort_order"),
         supabase.from("categories").select("*").order("sort_order"),
-        supabase.from("transactions").select("*").order("txn_date",{ascending:false}).order("created_at",{ascending:false}),
+        fetchTxns(),
         supabase.from("budgets").select("*"),
+        fetchSubs(),
       ]);
 
       let cats = catData || [];
@@ -118,12 +143,14 @@ export default function MoneyTracker({ user }) {
 
       const {catNameMap:nm} = buildCategoryMaps(cats);
       setTxns((txnData||[]).map(r=>toLocalTxn(r,nm)));
+      setSubs((subData||[]).map(r=>toLocalSub(r,nm)));
 
       const bMap = {};
       (budgetData||[]).forEach(b=>{bMap[b.month_key]=Number(b.amount);});
       setBudgets(bMap);
 
       setLoaded(true);
+      if(charged>0) showToast(`>> ตัดรอบ subscription ${charged} รายการ`);
     })();
   },[user.id]);
 
@@ -242,6 +269,7 @@ export default function MoneyTracker({ user }) {
     if(error) return showToast("ERR: ลบกระเป๋าไม่สำเร็จ");
     setWallets(p=>p.filter(w=>w.id!==id));
     setTxns(p=>p.filter(t=>t.walletId!==id&&t.fromWalletId!==id&&t.toWalletId!==id));
+    setSubs(p=>p.filter(s=>s.walletId!==id));
     if(activeWallet===id) setActiveWlt("all");
     setWalletModal(null);showToast(">> ลบกระเป๋าแล้ว");
   };
@@ -258,6 +286,45 @@ export default function MoneyTracker({ user }) {
       await supabase.from("budgets").delete().match({user_id:user.id, month_key:month});
       setBudgets(b=>{const c={...b};delete c[month];return c;});
     }
+  };
+
+  const runCharges = async ()=>{
+    const {data:count} = await supabase.rpc("charge_due_subscriptions");
+    if(!count) return;
+    const [{data:t},{data:s}] = await Promise.all([fetchTxns(), fetchSubs()]);
+    setTxns((t||[]).map(r=>toLocalTxn(r,catNameMap)));
+    setSubs((s||[]).map(r=>toLocalSub(r,catNameMap)));
+    showToast(`>> ตัดรอบ subscription ${count} รายการ`);
+  };
+
+  // Returns an error message for the modal, or nothing on success
+  const saveSubscription = async (form, existing)=>{
+    const payload = {
+      name:form.name.trim(), amount:+form.amount, cycle:form.cycle,
+      wallet_id:form.walletId, category_id:catIdMap[`expense:${form.category}`], active:form.active,
+    };
+    // Re-anchor the schedule only when timing changes, so month-end anchors survive plain edits
+    const rebase = !existing || form.nextDate!==existing.nextDate || form.cycle!==existing.cycle || (form.active&&!existing.active);
+    if(rebase) Object.assign(payload,{start_date:form.nextDate, next_charge_date:form.nextDate, charge_count:0});
+
+    const {data,error} = existing
+      ? await supabase.from("subscriptions").update({...payload,updated_at:new Date().toISOString()}).eq("id",existing.id).select().single()
+      : await supabase.from("subscriptions").insert({...payload,user_id:user.id}).select().single();
+    if(error) return "ERR: บันทึกไม่สำเร็จ";
+
+    const sub = toLocalSub(data,catNameMap);
+    setSubs(p=>existing?p.map(s=>s.id===sub.id?sub:s):[...p,sub]);
+    setSubModal(null);
+    showToast(existing?">> แก้ไข subscription แล้ว":`>> เพิ่ม "${sub.name}" แล้ว`);
+    if(sub.active&&sub.nextDate<=localToday()) await runCharges();
+  };
+
+  const deleteSubscription = async id=>{
+    const {error} = await supabase.from("subscriptions").delete().eq("id",id);
+    if(error) return showToast("ERR: ลบ subscription ไม่สำเร็จ");
+    setSubs(p=>p.filter(s=>s.id!==id));
+    setTxns(p=>p.map(t=>t.subscriptionId===id?{...t,subscriptionId:null}:t));
+    setSubModal(null);showToast(">> ลบ subscription แล้ว");
   };
 
   const pressDown  = e=>{e.currentTarget.style.transform="translate(3px,3px)";e.currentTarget.style.boxShadow="1px 1px 0 #000";};
@@ -374,6 +441,12 @@ export default function MoneyTracker({ user }) {
           categories={categories} catColors={catColors}
         />
       )}
+      {view==="subs"&&(
+        <SubscriptionsView
+          subs={subs} wallets={wallets} catColors={catColors}
+          openSubModal={setSubModal}
+        />
+      )}
       {view==="add"&&(
         <AddView
           addMode={addMode} setAddMode={setAddMode}
@@ -401,8 +474,17 @@ export default function MoneyTracker({ user }) {
     <CategoryModal
       catModal={catModal} setCatModal={setCatModal}
       categories={categories} catColors={catColors}
-      txns={txns} addCategory={addCategory} deleteCategory={deleteCategory}
+      txns={txns} subs={subs} addCategory={addCategory} deleteCategory={deleteCategory}
     />
+    {subModal&&(
+      <SubscriptionModal
+        key={subModal==="new"?"new":subModal.id}
+        subModal={subModal} setSubModal={setSubModal}
+        wallets={wallets} txns={txns} expenseCats={categories.expense}
+        saveSubscription={saveSubscription} deleteSubscription={deleteSubscription}
+        pressDown={pressDown} pressUp={pressUp} pressLeave={pressLeave}
+      />
+    )}
 
     {toast&&(
       <div className="toast-el" style={{position:"fixed",top:62,right:14,background:P.surf,border:`2px solid ${P.accent}`,boxShadow:`3px 3px 0 ${P.accent}66`,padding:"8px 13px",fontSize:11,color:P.accent,zIndex:400,fontFamily:"'Courier New',monospace",letterSpacing:"0.04em"}}>

@@ -1,7 +1,7 @@
 export default function BottomNav({ view, setView, setFabOpen }) {
   return (
     <div className="bottom-nav">
-      {[["dashboard","◉","HOME"],["wallets","▣","WALLETS"],["history","☰","HISTORY"]].map(([v,ic,lb])=>(
+      {[["dashboard","◉","HOME"],["wallets","▣","WALLETS"],["history","☰","HISTORY"],["subs","↻","SUBS"]].map(([v,ic,lb])=>(
         <button key={v} className={`bnav ${(view===v||(view==="add"&&v==="dashboard"))?"active":""}`}
           onClick={()=>{ setView(v); setFabOpen(false); }}>
           <span className="bnav-icon">{ic}</span>

@@ -8,7 +8,7 @@ const COLOR_OPTS = [
   "#8888AA","#FF6644","#44AAFF","#FFAACC",
 ];
 
-export default function CategoryModal({ catModal, setCatModal, categories, catColors, txns, addCategory, deleteCategory }) {
+export default function CategoryModal({ catModal, setCatModal, categories, catColors, txns, subs, addCategory, deleteCategory }) {
   const [newName,  setNewName]  = useState("");
   const [newColor, setNewColor] = useState("#8888AA");
 
@@ -17,6 +17,7 @@ export default function CategoryModal({ catModal, setCatModal, categories, catCo
   const type = catModal;
   const cats = categories[type] || [];
   const usedCats = new Set(txns.filter(t => t.type === type).map(t => t.category));
+  if (type === "expense") subs.forEach(s => usedCats.add(s.category));
 
   const handleAdd = () => {
     const name = newName.trim();

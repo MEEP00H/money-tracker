@@ -3,6 +3,7 @@ import { MONTHS, CAT_COLORS } from "./constants";
 export const fmt      = n => new Intl.NumberFormat("th-TH",{minimumFractionDigits:2}).format(n);
 export const fmtShort = n => new Intl.NumberFormat("th-TH").format(Math.round(Math.abs(n)));
 export const today    = () => new Date().toISOString().split("T")[0];
+export const localToday = () => { const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; };
 export const getCat   = name => CAT_COLORS[name] || "#8888AA";
 export const currentYM  = () => { const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; };
 export const monthLabel = ym => { const [y,m]=ym.split("-"); return `${MONTHS[+m-1]} ${+y+543}`; };

@@ -26,6 +26,7 @@ export default function TxnRow({ t, wallets, onDelete }) {
             <span style={{color:"#1A1A2E"}}>·</span><span>{fmtDate(t.date)}</span>
           </>):(<>
             {wallet&&<span style={{color:`${wallet.color}99`}}>{wallet.icon}</span>}
+            {t.subscriptionId&&<span style={{color:"#FFE60099"}} title="subscription">↻</span>}
             <span>{t.category}</span><span style={{color:"#1A1A2E"}}>·</span><span>{fmtDate(t.date)}</span>
           </>)}
         </div>
