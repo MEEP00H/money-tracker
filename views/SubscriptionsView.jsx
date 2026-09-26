@@ -1,17 +1,11 @@
 import { useState } from "react";
 import { P, MONTHS } from "../constants";
-import { fmtShort, localToday, perMonth } from "../utils";
+import { fmtShort, perMonth, daysUntil, dueLabel } from "../utils";
 import { PxCard } from "../components/ui";
 
 const CYCLE_LABEL = { weekly:"ทุกสัปดาห์", monthly:"ทุกเดือน", yearly:"ทุกปี" };
 
-function daysUntil(dateStr) {
-  const [y,m,d] = dateStr.split("-").map(Number);
-  const [ty,tm,td] = localToday().split("-").map(Number);
-  return Math.round((Date.UTC(y,m-1,d)-Date.UTC(ty,tm-1,td))/86400000);
-}
-
-export default function SubscriptionsView({ subs, wallets, catColors, openSubModal }) {
+export default function SubscriptionsView({ subs, wallets, catColors, openSubModal, shortSubIds }) {
   const [filter, setFilter] = useState("all");
 
   const active   = subs.filter(s=>s.active);
@@ -58,12 +52,13 @@ export default function SubscriptionsView({ subs, wallets, catColors, openSubMod
           const [,m,d]= s.nextDate.split("-").map(Number);
           const days  = daysUntil(s.nextDate);
           const soon  = s.active && days<=3;
+          const short = shortSubIds?.has(s.id);
           const color = catColors[s.category] || P.muted;
           return (
             <div key={s.id} className="txn-row" onClick={()=>openSubModal(s)}
-              style={{cursor:"pointer",opacity:s.active?1:0.45}}>
-              <div style={{width:42,flexShrink:0,textAlign:"center",border:`2px solid ${soon?P.accent:P.brite}`,background:P.bg,padding:"3px 0"}}>
-                <div style={{fontFamily:"'VT323',monospace",fontSize:20,lineHeight:1,color:soon?P.accent:P.text}}>{d}</div>
+              style={{cursor:"pointer",opacity:s.active?1:0.45,borderColor:short?P.red:undefined}}>
+              <div style={{width:42,flexShrink:0,textAlign:"center",border:`2px solid ${short?P.red:soon?P.accent:P.brite}`,background:P.bg,padding:"3px 0"}}>
+                <div style={{fontFamily:"'VT323',monospace",fontSize:20,lineHeight:1,color:short?P.red:soon?P.accent:P.text}}>{d}</div>
                 <div style={{fontSize:9,color:P.muted}}>{MONTHS[m-1]}</div>
               </div>
               <div style={{flex:1,minWidth:0}}>
@@ -75,8 +70,9 @@ export default function SubscriptionsView({ subs, wallets, catColors, openSubMod
                   <span>{CYCLE_LABEL[s.cycle]}</span>
                   <span>·</span>
                   <span style={{color:soon?P.accent:P.muted}}>
-                    {!s.active?"PAUSED":days===0?"TODAY":days===1?"พรุ่งนี้":`อีก ${days} วัน`}
+                    {!s.active?"PAUSED":dueLabel(days)}
                   </span>
+                  {short&&<span style={{color:P.red}}>· ⚠ เงินไม่พอ</span>}
                 </div>
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>

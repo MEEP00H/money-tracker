@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import { P, WALLET_ICONS, WALLET_COLORS } from "./constants";
-import { today, localToday, currentYM, calcBalance, sortByLastUsed } from "./utils";
+import { today, localToday, currentYM, calcBalance, sortByLastUsed, daysUntil } from "./utils";
 import Header       from "./components/Header";
 import BottomNav    from "./components/BottomNav";
 import FAB          from "./components/FAB";
@@ -75,6 +75,8 @@ function toLocalSub(row, catNameMap) {
     active:   row.active,
   };
 }
+
+const WARN_DAYS = 3;
 
 const fetchTxns = () => supabase.from("transactions").select("*").order("txn_date",{ascending:false}).order("created_at",{ascending:false});
 const fetchSubs = () => supabase.from("subscriptions").select("*").order("next_charge_date");
@@ -183,9 +185,18 @@ export default function MoneyTracker({ user }) {
   const budgetPct     = monthBudget>0?Math.min(100,Math.round((monthExpense/monthBudget)*100)):0;
 
   // Wallets backing an active subscription that have gone negative
-  const negativeSubWallets = wallets
-    .map(w=>({wallet:w, balance:calcBalance(w.id,txns), subs:subs.filter(s=>s.walletId===w.id&&s.active)}))
-    .filter(x=>x.balance<0 && x.subs.length>0);
+  // Per wallet: already negative, or not enough to cover subscriptions due in the next WARN_DAYS
+  const fundWarnings = wallets.map(w=>{
+    const balance  = calcBalance(w.id,txns);
+    const walletSubs = subs.filter(s=>s.walletId===w.id&&s.active);
+    const upcoming = walletSubs
+      .map(sub=>({sub, days:daysUntil(sub.nextDate)}))
+      .filter(u=>u.days>=0&&u.days<=WARN_DAYS)
+      .sort((a,b)=>a.days-b.days);
+    const needed = upcoming.reduce((t,u)=>t+u.sub.amount,0);
+    return {wallet:w, balance, subs:walletSubs, upcoming, needed};
+  }).filter(x=>x.subs.length>0 && (x.balance<0 || (x.upcoming.length>0 && x.balance<x.needed)));
+  const shortSubIds = new Set(fundWarnings.filter(x=>x.balance<x.needed).flatMap(x=>x.upcoming.map(u=>u.sub.id)));
 
   // ── Handlers ──────────────────────────────────────────────────────────
   const showToast = (msg, kind="info")=>{setToast({msg,kind});setTimeout(()=>setToast(null),2200);};
@@ -452,7 +463,7 @@ export default function MoneyTracker({ user }) {
 
     <div ref={scrollRef} style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",position:"relative",zIndex:2}}><div style={{maxWidth:520,margin:"0 auto",padding:"var(--gap) var(--px) 24px"}}>
       <InsufficientFundsBanner
-        items={negativeSubWallets} dismissedSig={dismissedInsufficientSig}
+        items={fundWarnings} dismissedSig={dismissedInsufficientSig}
         onDismiss={setDismissedInsufficientSig}
       />
       {view==="dashboard"&&(
@@ -485,7 +496,7 @@ export default function MoneyTracker({ user }) {
       {view==="subs"&&(
         <SubscriptionsView
           subs={subs} wallets={wallets} catColors={catColors}
-          openSubModal={setSubModal}
+          openSubModal={setSubModal} shortSubIds={shortSubIds}
         />
       )}
       {view==="add"&&(

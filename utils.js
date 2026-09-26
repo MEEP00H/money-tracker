@@ -32,6 +32,14 @@ export function monthlyTotals(txns, keys) {
   return rows;
 }
 
+export function daysUntil(dateStr) {
+  const [y,m,d] = dateStr.split("-").map(Number);
+  const [ty,tm,td] = localToday().split("-").map(Number);
+  return Math.round((Date.UTC(y,m-1,d)-Date.UTC(ty,tm-1,td))/86400000);
+}
+
+export const dueLabel = d => d===0 ? "วันนี้" : d===1 ? "พรุ่งนี้" : `อีก ${d} วัน`;
+
 export const perMonth = s => s.cycle==="yearly" ? s.amount/12 : s.cycle==="weekly" ? s.amount*52/12 : s.amount;
 
 export function sortByLastUsed(wallets, txns) {
