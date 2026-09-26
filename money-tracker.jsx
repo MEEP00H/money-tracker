@@ -9,6 +9,7 @@ import WalletModal  from "./components/WalletModal";
 import DeleteConfirm   from "./components/DeleteConfirm";
 import CategoryModal  from "./components/CategoryModal";
 import SubscriptionModal from "./components/SubscriptionModal";
+import InsufficientFundsBanner from "./components/InsufficientFundsBanner";
 import DashboardView from "./views/DashboardView";
 import WalletsView   from "./views/WalletsView";
 import HistoryView   from "./views/HistoryView";
@@ -98,7 +99,8 @@ export default function MoneyTracker({ user }) {
   const [addMode,    setAddMode]    = useState("expense");
   const [fabOpen,    setFabOpen]    = useState(false);
   const [deleteId,   setDeleteId]   = useState(null);
-  const [toast,      setToast]      = useState("");
+  const [toast,      setToast]      = useState(null);
+  const [dismissedInsufficientSig, setDismissedInsufficientSig] = useState("");
   const [walletModal,setWalletModal]= useState(null);
   const [walletForm, setWalletForm] = useState({name:"",icon:"💳",color:"#FFE600"});
   const [catModal,   setCatModal]   = useState(null);
@@ -112,6 +114,15 @@ export default function MoneyTracker({ user }) {
   // ── Load from Supabase ─────────────────────────────────────────────────
   useEffect(()=>{
     (async()=>{
+      const [{data:preWallets},{data:preTxns},{data:preSubs}] = await Promise.all([
+        supabase.from("wallets").select("*"),
+        fetchTxns(),
+        fetchSubs(),
+      ]);
+      const activeSubWalletIds = [...new Set((preSubs||[]).filter(s=>s.active).map(s=>s.wallet_id))];
+      const preBalance = {};
+      activeSubWalletIds.forEach(id=>{preBalance[id]=calcBalance(id,(preTxns||[]).map(r=>toLocalTxn(r,{})));});
+
       // Post any subscription charges that came due before loading transactions
       const {data:charged} = await supabase.rpc("charge_due_subscriptions");
 
@@ -150,7 +161,16 @@ export default function MoneyTracker({ user }) {
       setBudgets(bMap);
 
       setLoaded(true);
-      if(charged>0) showToast(`>> ตัดรอบ subscription ${charged} รายการ`);
+      if(charged>0){
+        const freshTxns = (txnData||[]).map(r=>toLocalTxn(r,nm));
+        const justNegative = activeSubWalletIds
+          .filter(id=>preBalance[id]>=0 && calcBalance(id,freshTxns)<0)
+          .map(id=>(walletsData||[]).find(w=>w.id===id)?.name)
+          .filter(Boolean);
+        justNegative.length>0
+          ? showToast(`>> ตัดรอบสำเร็จ ${charged} รายการ — กระเป๋า ${justNegative.join(", ")} ติดลบ!`,"warn")
+          : showToast(`>> ตัดรอบ subscription ${charged} รายการ`);
+      }
     })();
   },[user.id]);
 
@@ -162,8 +182,13 @@ export default function MoneyTracker({ user }) {
   const monthBudget   = budgets[selectedMonth]||0;
   const budgetPct     = monthBudget>0?Math.min(100,Math.round((monthExpense/monthBudget)*100)):0;
 
+  // Wallets backing an active subscription that have gone negative
+  const negativeSubWallets = wallets
+    .map(w=>({wallet:w, balance:calcBalance(w.id,txns), subs:subs.filter(s=>s.walletId===w.id&&s.active)}))
+    .filter(x=>x.balance<0 && x.subs.length>0);
+
   // ── Handlers ──────────────────────────────────────────────────────────
-  const showToast = msg=>{setToast(msg);setTimeout(()=>setToast(""),2200);};
+  const showToast = (msg, kind="info")=>{setToast({msg,kind});setTimeout(()=>setToast(null),2200);};
 
   const handleLogout = ()=>supabase.auth.signOut();
 
@@ -289,12 +314,24 @@ export default function MoneyTracker({ user }) {
   };
 
   const runCharges = async ()=>{
+    const activeSubWalletIds = [...new Set(subs.filter(s=>s.active).map(s=>s.walletId))];
+    const preBalance = {};
+    activeSubWalletIds.forEach(id=>{preBalance[id]=calcBalance(id,txns);});
+
     const {data:count} = await supabase.rpc("charge_due_subscriptions");
     if(!count) return;
     const [{data:t},{data:s}] = await Promise.all([fetchTxns(), fetchSubs()]);
-    setTxns((t||[]).map(r=>toLocalTxn(r,catNameMap)));
+    const freshTxns = (t||[]).map(r=>toLocalTxn(r,catNameMap));
+    setTxns(freshTxns);
     setSubs((s||[]).map(r=>toLocalSub(r,catNameMap)));
-    showToast(`>> ตัดรอบ subscription ${count} รายการ`);
+
+    const justNegative = activeSubWalletIds
+      .filter(id=>preBalance[id]>=0 && calcBalance(id,freshTxns)<0)
+      .map(id=>wallets.find(w=>w.id===id)?.name)
+      .filter(Boolean);
+    justNegative.length>0
+      ? showToast(`>> ตัดรอบสำเร็จ ${count} รายการ — กระเป๋า ${justNegative.join(", ")} ติดลบ!`,"warn")
+      : showToast(`>> ตัดรอบ subscription ${count} รายการ`);
   };
 
   // Returns an error message for the modal, or nothing on success
@@ -414,6 +451,10 @@ export default function MoneyTracker({ user }) {
     />
 
     <div ref={scrollRef} style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",position:"relative",zIndex:2}}><div style={{maxWidth:520,margin:"0 auto",padding:"var(--gap) var(--px) 24px"}}>
+      <InsufficientFundsBanner
+        items={negativeSubWallets} dismissedSig={dismissedInsufficientSig}
+        onDismiss={setDismissedInsufficientSig}
+      />
       {view==="dashboard"&&(
         <DashboardView
           selectedMonth={selectedMonth} setSelMonth={setSelMonth}
@@ -486,11 +527,14 @@ export default function MoneyTracker({ user }) {
       />
     )}
 
-    {toast&&(
-      <div className="toast-el" style={{position:"fixed",top:62,right:14,background:P.surf,border:`2px solid ${P.accent}`,boxShadow:`3px 3px 0 ${P.accent}66`,padding:"8px 13px",fontSize:11,color:P.accent,zIndex:400,fontFamily:"'Courier New',monospace",letterSpacing:"0.04em"}}>
-        {toast}
-      </div>
-    )}
+    {toast&&(()=>{
+      const tc = toast.kind==="warn"?P.red:P.accent;
+      return (
+        <div className="toast-el" style={{position:"fixed",top:62,right:14,left:14,background:P.surf,border:`2px solid ${tc}`,boxShadow:`3px 3px 0 ${tc}66`,padding:"8px 13px",fontSize:11,color:tc,zIndex:400,fontFamily:"'Courier New',monospace",letterSpacing:"0.04em"}}>
+          {toast.msg}
+        </div>
+      );
+    })()}
     </div>
   );
 }
