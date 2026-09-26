@@ -147,7 +147,9 @@ export default function DashboardView({ selectedMonth, setSelMonth, wallets, txn
         {[{id:"all",name:"ALL",icon:"★",color:P.accent},...[...wallets].sort((a,b)=>{const lu={};txns.forEach(t=>{[t.walletId,t.fromWalletId,t.toWalletId].forEach(w=>w&&t.date>(lu[w]||"")&&(lu[w]=t.date));});return(lu[b.id]||"").localeCompare(lu[a.id]||"");})].map(w=>(
           <button key={w.id} className="wchip" onClick={()=>setActiveWlt(w.id)}
             style={{borderColor:activeWallet===w.id?w.color:P.border,color:activeWallet===w.id?w.color:P.muted,boxShadow:activeWallet===w.id?`2px 2px 0 ${w.color}44`:"2px 2px 0 #000"}}>
-            {w.icon} {w.name}
+            {w.character_url
+              ? <img src={w.character_url} alt="" style={{width:18,height:18,objectFit:"cover",borderRadius:4}}/>
+              : w.icon} {w.name}
           </button>
         ))}
       </div>
@@ -155,6 +157,9 @@ export default function DashboardView({ selectedMonth, setSelMonth, wallets, txn
       {/* Balance sheet */}
       <div className="fade-up" style={{background:P.surf,border:`2px solid ${activeColor}`,boxShadow:`4px 4px 0 ${activeColor}44`,padding:"16px"}}>
         <div style={{textAlign:"center",marginBottom:14,paddingBottom:12,borderBottom:`1px solid ${P.border}`}}>
+          {activeW?.character_url&&(
+            <img src={activeW.character_url} alt="" style={{width:56,height:56,objectFit:"cover",borderRadius:10,border:`2px solid ${activeColor}`,marginBottom:8}}/>
+          )}
           <div style={{fontSize:9,color:P.muted,letterSpacing:"0.15em",fontFamily:"'Courier New',monospace",marginBottom:5}}>CLOSING BALANCE</div>
           <div style={{fontFamily:"'VT323',monospace",fontSize:"clamp(40px,10vw,54px)",color:closingBalance>=0?activeColor:P.red,lineHeight:1}}>
             {closingBalance<0?"-":""}฿{fmtShort(Math.abs(closingBalance))}
