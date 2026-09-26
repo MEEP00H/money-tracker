@@ -22,7 +22,9 @@ export default function WalletsView({ wallets, txns, selectedMonth, totalBalance
           return(
             <div key={w.id} className="wallet-card" style={{background:P.surf,borderColor:w.color,boxShadow:`4px 4px 0 ${w.color}55`}}
               onClick={()=>{setWalletModal(w);setWalletForm({name:w.name,icon:w.icon,color:w.color});}}>
-              <div style={{fontSize:22,marginBottom:5}}>{w.icon}</div>
+              {w.character_url
+                ? <img src={w.character_url} alt="" style={{width:44,height:44,objectFit:"cover",borderRadius:6,marginBottom:5,border:`1px solid ${w.color}55`}}/>
+                : <div style={{fontSize:22,marginBottom:5}}>{w.icon}</div>}
               <div style={{fontSize:10,color:P.muted,marginBottom:3}}>{w.name}</div>
               <div style={{fontFamily:"'VT323',monospace",fontSize:"clamp(18px,5vw,22px)",color:bal>=0?w.color:P.red,marginBottom:4,lineHeight:1}}>{bal<0?"-":""}฿{fmtShort(bal)}</div>
               {(mInc>0||mExp>0)&&<div style={{fontSize:11,fontFamily:"'VT323',monospace",color:mDelta>=0?`${P.green}88`:`${P.red}88`,marginBottom:5}}>{mDelta>=0?"▲+":"▼-"}฿{fmtShort(Math.abs(mDelta))}</div>}

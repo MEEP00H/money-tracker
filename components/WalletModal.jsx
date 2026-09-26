@@ -11,7 +11,9 @@ export default function WalletModal({ walletModal, setWalletModal, walletForm, s
           {walletModal==="new"?"// NEW WALLET":"// EDIT WALLET"}
         </div>
         <div style={{background:P.bg,border:`2px solid ${walletForm.color}`,boxShadow:`4px 4px 0 ${walletForm.color}44`,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-          <span style={{fontSize:26}}>{walletForm.icon}</span>
+          {walletModal!=="new"&&walletModal.character_url
+            ? <img src={walletModal.character_url} alt="" style={{width:40,height:40,objectFit:"cover",borderRadius:6,flexShrink:0}}/>
+            : <span style={{fontSize:26}}>{walletForm.icon}</span>}
           <div>
             <div style={{fontSize:13,color:P.text}}>{walletForm.name||"// NAME"}</div>
             {walletModal!=="new"&&(
