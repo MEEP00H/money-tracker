@@ -4,6 +4,7 @@ import { P } from "../constants";
 import { fmtShort, currentYM, prevMonth, monthKeysBack, monthlyTotals, calcBalance, perMonth } from "../utils";
 import { SLabel, PxCard, PixelBar } from "../components/ui";
 import BarTooltip from "../components/BarTooltip";
+import YearOverYearChart from "../components/YearOverYearChart";
 
 const RANGES = [["3","3M"],["6","6M"],["12","12M"],["all","ALL"]];
 const TOP_CATS = 6;
@@ -146,6 +147,8 @@ export default function OverviewView({ txns, wallets, subs, catColors }) {
           {keys.includes(cur)&&<div style={{fontSize:9,color:P.muted,marginTop:6}}>* เดือนปัจจุบัน (ยังไม่จบเดือน)</div>}
         </>):noData}
       </PxCard>
+
+      <YearOverYearChart txns={txns}/>
 
       {/* Where the money goes */}
       <PxCard className="fade-up">
