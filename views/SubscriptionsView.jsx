@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { P, MONTHS } from "../constants";
-import { fmtShort, localToday } from "../utils";
+import { fmtShort, localToday, perMonth } from "../utils";
 import { PxCard } from "../components/ui";
 
 const CYCLE_LABEL = { weekly:"ทุกสัปดาห์", monthly:"ทุกเดือน", yearly:"ทุกปี" };
-const perMonth = s => s.cycle==="yearly" ? s.amount/12 : s.cycle==="weekly" ? s.amount*52/12 : s.amount;
 
 function daysUntil(dateStr) {
   const [y,m,d] = dateStr.split("-").map(Number);

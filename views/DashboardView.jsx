@@ -1,10 +1,21 @@
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
-import { P, MONTHS } from "../constants";
-import { fmtShort, currentYM, monthLabel, prevMonth, nextMonth } from "../utils";
+import { P } from "../constants";
+import { fmtShort, currentYM, monthLabel, prevMonth, nextMonth, monthKeysBack, monthlyTotals } from "../utils";
 import { SLabel, PxCard, PxBtn, PxInput, PixelBar } from "../components/ui";
 import BarTooltip from "../components/BarTooltip";
 import TxnRow from "../components/TxnRow";
+import OverviewView from "./OverviewView";
+
+function ModeSwitch({ mode, setMode }) {
+  return (
+    <div style={{display:"flex",gap:6}}>
+      {[["month","◷ MONTH"],["overview","◈ OVERVIEW"]].map(([m,l])=>(
+        <button key={m} className={`pill-btn ${mode===m?"act":""}`} onClick={()=>setMode(m)} style={{flex:1}}>{l}</button>
+      ))}
+    </div>
+  );
+}
 
 function FoodDailyCard({ dailyEntries, avgDailyFood, foodColor, selectedMonth }) {
   const [showAll, setShowAll] = useState(false);
@@ -48,9 +59,20 @@ function FoodDailyCard({ dailyEntries, avgDailyFood, foodColor, selectedMonth })
   );
 }
 
-export default function DashboardView({ selectedMonth, setSelMonth, wallets, txns, activeWallet, setActiveWlt, budgets, saveBudget, setView, setDeleteId, showToast, catColors }) {
+export default function DashboardView({ selectedMonth, setSelMonth, wallets, txns, subs, activeWallet, setActiveWlt, budgets, saveBudget, setView, setDeleteId, showToast, catColors }) {
   const [editingBudget, setEditBudget] = useState(false);
   const [budgetInput,   setBudgetInput] = useState("");
+  const [mode, setModeState] = useState(()=>{ try { return localStorage.getItem("homeMode") || "month"; } catch { return "month"; } });
+  const setMode = m => { setModeState(m); try { localStorage.setItem("homeMode", m); } catch {} };
+
+  if (mode === "overview") {
+    return (
+      <div style={{display:"flex",flexDirection:"column",gap:"var(--gap)"}}>
+        <ModeSwitch mode={mode} setMode={setMode}/>
+        <OverviewView txns={txns} wallets={wallets} subs={subs} catColors={catColors}/>
+      </div>
+    );
+  }
 
   const activeTxns  = activeWallet==="all"?txns:txns.filter(t=>t.walletId===activeWallet||t.fromWalletId===activeWallet||t.toWalletId===activeWallet);
   const monthTxns   = activeTxns.filter(t=>t.date.startsWith(selectedMonth));
@@ -97,11 +119,7 @@ export default function DashboardView({ selectedMonth, setSelMonth, wallets, txn
     return{name:`W${wi+1}`,รายรับ:wt.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0),รายจ่าย:wt.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0)};
   }).filter(Boolean);
 
-  const monthlyTrend = Array.from({length:6},(_,i)=>{
-    const d=new Date(2026,4-i,1);const m2=d.getMonth();const y2=d.getFullYear();
-    const mf=activeTxns.filter(t=>{const td=new Date(t.date);return td.getMonth()===m2&&td.getFullYear()===y2;});
-    return{name:MONTHS[m2],รายรับ:mf.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0),รายจ่าย:mf.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0)};
-  }).reverse();
+  const monthlyTrend = monthlyTotals(activeTxns, monthKeysBack(6));
 
   const catData = Object.entries(
     monthTxns.filter(t=>t.type==="expense").reduce((a,t)=>{a[t.category]=(a[t.category]||0)+t.amount;return a;},{})
@@ -131,6 +149,7 @@ export default function DashboardView({ selectedMonth, setSelMonth, wallets, txn
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:"var(--gap)"}}>
+      <ModeSwitch mode={mode} setMode={setMode}/>
 
       {/* Month nav */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"2px 0"}}>

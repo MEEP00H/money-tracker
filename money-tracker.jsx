@@ -458,7 +458,7 @@ export default function MoneyTracker({ user }) {
       {view==="dashboard"&&(
         <DashboardView
           selectedMonth={selectedMonth} setSelMonth={setSelMonth}
-          wallets={wallets} txns={txns}
+          wallets={wallets} txns={txns} subs={subs}
           activeWallet={activeWallet} setActiveWlt={setActiveWlt}
           budgets={budgets} saveBudget={saveBudget}
           setView={setView} setDeleteId={setDeleteId}
