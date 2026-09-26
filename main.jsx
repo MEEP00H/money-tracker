@@ -3,18 +3,21 @@ import { createRoot } from "react-dom/client";
 import { supabase } from "./supabase";
 import MoneyTracker from "./money-tracker.jsx";
 import AuthScreen from "./AuthScreen.jsx";
+import ResetPasswordScreen from "./ResetPasswordScreen.jsx";
 import { P } from "./constants";
 
 function App() {
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [session,  setSession]  = useState(null);
+  const [loading,  setLoading]  = useState(true);
+  const [recovery, setRecovery] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") setRecovery(true);
       setSession(session);
     });
     return () => subscription.unsubscribe();
@@ -33,6 +36,7 @@ function App() {
     );
   }
 
+  if (recovery) return <ResetPasswordScreen onDone={() => setRecovery(false)} />;
   if (!session) return <AuthScreen />;
   return <MoneyTracker user={session.user} />;
 }

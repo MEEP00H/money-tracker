@@ -1,18 +1,43 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 import { P } from "./constants";
 
 export default function AuthScreen() {
-  const [mode,     setMode]     = useState("login");   // "login" | "signup"
+  const [mode,     setMode]     = useState("login");   // "login" | "signup" | "forgot"
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState("");
   const [info,     setInfo]     = useState("");
 
+  // Surface expired/invalid recovery-link errors that Supabase redirects back with in the URL hash
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash.includes("error=")) return;
+    const params = new URLSearchParams(hash.slice(1));
+    const code = params.get("error_code");
+    const desc = params.get("error_description");
+    setError(code === "otp_expired"
+      ? "ERR: ลิงก์หมดอายุหรือถูกใช้ไปแล้ว กรุณาขอลิงก์ใหม่"
+      : `ERR: ${desc ? decodeURIComponent(desc.replace(/\+/g," ")) : "เกิดข้อผิดพลาด"}`);
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  }, []);
+
   const submit = async e => {
     e.preventDefault();
     setError(""); setInfo("");
+
+    if (mode === "forgot") {
+      if (!email) return setError("ERR: กรอก email");
+      setLoading(true);
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      });
+      setLoading(false);
+      if (err) return setError(`ERR: ${err.message}`);
+      return setInfo(">> ส่งลิงก์รีเซ็ตรหัสผ่านแล้ว — กรุณาตรวจ inbox");
+    }
+
     if (!email || !password) return setError("ERR: กรอก email และ password");
     setLoading(true);
 
@@ -81,22 +106,24 @@ export default function AuthScreen() {
             LEDGER<span className="blink">_</span>
           </div>
           <div style={{fontSize:10,color:P.muted,marginTop:6,letterSpacing:"0.1em"}}>
-            PERSONAL MONEY TRACKER
+            {mode==="forgot"?"รีเซ็ตรหัสผ่าน":"PERSONAL MONEY TRACKER"}
           </div>
         </div>
 
         {/* Mode toggle */}
-        <div style={{display:"flex",gap:6,marginBottom:20}}>
-          {[["login","LOGIN"],["signup","SIGN UP"]].map(([m,l])=>(
-            <button key={m} onClick={()=>{setMode(m);setError("");setInfo("");}}
-              style={{flex:1,padding:"8px",border:`2px solid ${mode===m?P.accent:P.border}`,
-                background:"transparent",color:mode===m?P.accent:P.muted,cursor:"pointer",
-                fontFamily:"'Courier New',monospace",fontSize:11,
-                boxShadow:mode===m?`2px 2px 0 ${P.accent}44`:"2px 2px 0 #000"}}>
-              {l}
-            </button>
-          ))}
-        </div>
+        {mode!=="forgot"&&(
+          <div style={{display:"flex",gap:6,marginBottom:20}}>
+            {[["login","LOGIN"],["signup","SIGN UP"]].map(([m,l])=>(
+              <button key={m} onClick={()=>{setMode(m);setError("");setInfo("");}}
+                style={{flex:1,padding:"8px",border:`2px solid ${mode===m?P.accent:P.border}`,
+                  background:"transparent",color:mode===m?P.accent:P.muted,cursor:"pointer",
+                  fontFamily:"'Courier New',monospace",fontSize:11,
+                  boxShadow:mode===m?`2px 2px 0 ${P.accent}44`:"2px 2px 0 #000"}}>
+                {l}
+              </button>
+            ))}
+          </div>
+        )}
 
         <form onSubmit={submit} style={{display:"flex",flexDirection:"column",gap:12}}>
           <div>
@@ -104,11 +131,20 @@ export default function AuthScreen() {
             <input className="auth-inp" type="email" value={email} onChange={e=>setEmail(e.target.value)}
               placeholder="user@example.com" autoComplete="email" style={inp}/>
           </div>
-          <div>
-            <div style={{fontSize:9,color:P.muted,letterSpacing:"0.12em",marginBottom:5}}>PASSWORD</div>
-            <input className="auth-inp" type="password" value={password} onChange={e=>setPassword(e.target.value)}
-              placeholder="••••••••" autoComplete={mode==="signup"?"new-password":"current-password"} style={inp}/>
-          </div>
+          {mode!=="forgot"&&(
+            <div>
+              <div style={{fontSize:9,color:P.muted,letterSpacing:"0.12em",marginBottom:5}}>PASSWORD</div>
+              <input className="auth-inp" type="password" value={password} onChange={e=>setPassword(e.target.value)}
+                placeholder="••••••••" autoComplete={mode==="signup"?"new-password":"current-password"} style={inp}/>
+            </div>
+          )}
+          {mode==="login"&&(
+            <button type="button" onClick={()=>{setMode("forgot");setError("");setInfo("");}}
+              style={{background:"none",border:"none",cursor:"pointer",color:P.muted,fontSize:10,
+                letterSpacing:"0.06em",textAlign:"right",padding:0,alignSelf:"flex-end"}}>
+              ลืมรหัสผ่าน?
+            </button>
+          )}
 
           {error && (
             <div style={{color:P.red,fontSize:11,padding:"8px 10px",background:"rgba(255,68,102,0.06)",border:`2px solid ${P.red}`}}>
@@ -122,8 +158,16 @@ export default function AuthScreen() {
           )}
 
           <button type="submit" disabled={loading} style={btn}>
-            {loading ? "LOADING..." : mode==="signup" ? "CREATE ACCOUNT" : "ENTER"}
+            {loading ? "LOADING..." : mode==="signup" ? "CREATE ACCOUNT" : mode==="forgot" ? "ส่งลิงก์รีเซ็ต" : "ENTER"}
           </button>
+
+          {mode==="forgot"&&(
+            <button type="button" onClick={()=>{setMode("login");setError("");setInfo("");}}
+              style={{background:"none",border:"none",cursor:"pointer",color:P.accent,fontSize:10,
+                letterSpacing:"0.06em",textAlign:"center",padding:0}}>
+              ← กลับไปหน้า Login
+            </button>
+          )}
         </form>
       </div>
     </div>
